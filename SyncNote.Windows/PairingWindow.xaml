@@ -10,8 +10,6 @@
         <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
             <Button x:Name="NewTokenButton" Content="Новый код" Width="110"
                     Click="NewTokenButton_Click" />
-            <Button x:Name="StartStopButton" Content="Принимать подключения" Width="170"
-                    Margin="8,0,0,0" Click="StartStopButton_Click" />
         </StackPanel>
         <TextBlock x:Name="ServerInfo" TextWrapping="Wrap" Margin="0,0,0,8" />
         <StackPanel Orientation="Horizontal" Margin="0,0,0,8">

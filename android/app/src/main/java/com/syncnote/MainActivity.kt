@@ -53,6 +53,8 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         refresh()
+        // Подтягиваем правки с ПК при возврате в список.
+        SyncAuto.trigger(this)
     }
 
     private fun refresh() {

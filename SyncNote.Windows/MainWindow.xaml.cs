@@ -6,12 +6,29 @@ namespace SyncNote.Windows;
 
 public partial class MainWindow : Window
 {
+    public const int SyncPort = 48211;
+
     private readonly SqliteNoteStore _store = new(SqliteNoteStore.DefaultPath);
+    private readonly PairingService _pairing = PairingService.Open(SqliteNoteStore.DefaultPath);
+    private readonly SyncServer _server;
+    private readonly CancellationTokenSource _serverCts = new();
+    private readonly Task _serverTask;
 
     public MainWindow()
     {
         InitializeComponent();
-        Closed += (_, _) => _store.Dispose();
+        // Сервер синхронизации работает всегда, пока открыто приложение:
+        // телефон пушит изменения сам, кнопки не нужны.
+        _server = new SyncServer(_store, _pairing, SyncPort);
+        _serverTask = _server.RunAsync(_serverCts.Token);
+        ConnectionStatus.Text = $"Принимаю подключения: {SyncPort}";
+        Closed += (_, _) =>
+        {
+            try { _serverCts.Cancel(); } catch { }
+            _server.Dispose();
+            _pairing.Dispose();
+            _store.Dispose();
+        };
         RefreshList();
     }
 
@@ -95,7 +112,7 @@ public partial class MainWindow : Window
 
     private void PairingButton_Click(object sender, RoutedEventArgs e)
     {
-        var w = new PairingWindow(_store, SqliteNoteStore.DefaultPath)
+        var w = new PairingWindow(_store, _pairing, SyncPort)
         {
             Owner = this,
         };

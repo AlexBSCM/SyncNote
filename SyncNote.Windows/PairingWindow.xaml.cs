@@ -7,70 +7,34 @@ using SyncNote.Core;
 
 namespace SyncNote.Windows;
 
-// Окно сопряжения: сервер синхронизации (петля), QR с одноразовым токеном,
-// доверенные устройства. Wi-Fi Direct — на реальном железе (этап 4, ТЗ).
+// Окно сопряжения: QR с одноразовым токеном и доверенные устройства.
+// Сервер синхронизации работает всегда (владелец — MainWindow).
 public partial class PairingWindow : Window
 {
     private readonly ISyncStore _store;
     private readonly PairingService _pairing;
+    private readonly int _port;
     private readonly WifiDirectGroup _p2pGroup = new();
     private BluetoothServer? _btServer;
-    private SyncServer? _server;
-    private CancellationTokenSource? _serverCts;
-    private Task? _serverTask;
 
-    public PairingWindow(ISyncStore store, string dbPath)
+    public PairingWindow(ISyncStore store, PairingService pairing, int port)
     {
         InitializeComponent();
         _store = store;
-        _pairing = PairingService.Open(dbPath);
+        _pairing = pairing;
+        _port = port;
+        ServerInfo.Text = $"Принимаю подключения: 127.0.0.1:{port}";
         P2pInfo.Text = _p2pGroup.Status;
         Loaded += (_, _) =>
         {
-            StartServer();
             IssueNewToken();
             RefreshTrusted();
         };
         Closed += (_, _) =>
         {
-            StopServer();
             _p2pGroup.Dispose();
             _btServer?.Dispose();
         };
-    }
-
-    private void StartServer()
-    {
-        if (_server is not null)
-            return;
-        // Фиксированный порт: QR, adb reverse и правило брандмауэра переживают перезапуски.
-        _server = new SyncServer(_store, _pairing, 48211);
-        _serverCts = new CancellationTokenSource();
-        _serverTask = _server.RunAsync(_serverCts.Token);
-        ServerInfo.Text = $"Принимаю подключения: 127.0.0.1:{_server.Port}";
-        StartStopButton.Content = "Остановить";
-    }
-
-    private void StopServer()
-    {
-        try { _serverCts?.Cancel(); } catch { }
-        _server?.Dispose();
-        _server = null;
-        ServerInfo.Text = "Сервер остановлен.";
-        StartStopButton.Content = "Принимать подключения";
-    }
-
-    private void StartStopButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (_server is null)
-        {
-            StartServer();
-            IssueNewToken();
-        }
-        else
-        {
-            StopServer();
-        }
     }
 
     private void NewTokenButton_Click(object sender, RoutedEventArgs e) => IssueNewToken();
@@ -82,7 +46,7 @@ public partial class PairingWindow : Window
         {
             v = 1,
             host = "127.0.0.1",
-            port = _server?.Port ?? 0,
+            port = _port,
             p2pName = Environment.MachineName,
             token,
             exp = ((DateTimeOffset)exp).ToUnixTimeSeconds(),

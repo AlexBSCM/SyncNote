@@ -34,6 +34,7 @@ class EditorActivity : AppCompatActivity() {
                 ?: throw java.io.IOException("Не удалось прочитать файл.")
             repo.addAttachmentBytes(id, name, mime, bytes)
             loadAttachments()
+            SyncAuto.trigger(this@EditorActivity)
         } catch (e: Exception) {
             toast("Не удалось добавить вложение: ${e.message}")
         }
@@ -57,10 +58,12 @@ class EditorActivity : AppCompatActivity() {
             current.title = findViewById<EditText>(R.id.titleBox).text.toString()
             current.body = findViewById<EditText>(R.id.bodyBox).text.toString()
             repo.update(current)
+            SyncAuto.trigger(this)
             finish()
         }
         findViewById<Button>(R.id.deleteButton).setOnClickListener {
             noteId?.let { repo.delete(it) }
+            SyncAuto.trigger(this)
             finish()
         }
         findViewById<Button>(R.id.addItemButton).setOnClickListener {
@@ -70,6 +73,7 @@ class EditorActivity : AppCompatActivity() {
                 repo.addChecklistItem(id, box.text.toString().trim())
                 box.text.clear()
                 loadChecklist()
+                SyncAuto.trigger(this@EditorActivity)
             }
         }
         findViewById<Button>(R.id.addFileButton).setOnClickListener {

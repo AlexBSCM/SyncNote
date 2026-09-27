@@ -20,12 +20,14 @@ class SyncActivity : AppCompatActivity(), P2pConnector.Listener {
     private val qrLauncher = registerForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()) { res ->
         if (res.resultCode == RESULT_OK && res.data != null) {
-            findViewById<EditText>(R.id.hostBox).setText(
-                res.data!!.getStringExtra(QrScanActivity.EXTRA_HOST))
-            findViewById<EditText>(R.id.portBox).setText(
-                res.data!!.getIntExtra(QrScanActivity.EXTRA_PORT, 0).toString())
+            val host = res.data!!.getStringExtra(QrScanActivity.EXTRA_HOST) ?: ""
+            val port = res.data!!.getIntExtra(QrScanActivity.EXTRA_PORT, 0)
+            findViewById<EditText>(R.id.hostBox).setText(host)
+            findViewById<EditText>(R.id.portBox).setText(port.toString())
             findViewById<EditText>(R.id.tokenBox).setText(
                 res.data!!.getStringExtra(QrScanActivity.EXTRA_TOKEN))
+            if (host.isNotBlank() && port > 0)
+                SyncAuto.saveProfile(this, host, port)
             setState("QR принят. Нажмите «Синхронизировать».")
         }
     }
@@ -44,6 +46,11 @@ class SyncActivity : AppCompatActivity(), P2pConnector.Listener {
             qrLauncher.launch(Intent(this, QrScanActivity::class.java))
         }
         findViewById<Button>(R.id.btButton).setOnClickListener { pickBluetoothDevice() }
+        SyncAuto.profile(this)?.let { (host, port) ->
+            findViewById<EditText>(R.id.hostBox).setText(host)
+            findViewById<EditText>(R.id.portBox).setText(port.toString())
+            setState("Узел запомнен. Токен нужен только один раз.")
+        }
         findViewById<ListView>(R.id.peersList)?.setOnItemClickListener { _, _, pos, _ ->
             p2p.connect(peers[pos])
         }
@@ -73,8 +80,13 @@ class SyncActivity : AppCompatActivity(), P2pConnector.Listener {
                 val session = SyncSession(host, port, repo.deviceId(),
                     android.os.Build.MODEL, token)
                 val r = session.run(repo)
+                SyncAuto.saveProfile(this@SyncActivity, host, port)
+                runOnUiThread {
+                    // Токен одноразовый: устройство теперь доверенное.
+                    findViewById<EditText>(R.id.tokenBox).text.clear()
+                }
                 setState("Готово: отправлено ${r.pushed}, получено ${r.pulled}, " +
-                    "конфликтов ${r.conflicts}.")
+                    "конфликтов ${r.conflicts}. Узел запомнен.")
             } catch (e: HelloRejectedException) {
                 setState("Ошибка: ${e.message}")
             } catch (e: Exception) {
