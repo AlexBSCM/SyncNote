@@ -25,7 +25,8 @@ object SyncAuto {
     }
 
     // Тихий автосинх: успех молча, ошибка — короткий тост, данные целы.
-    fun trigger(ctx: Context) {
+    // quiet=true: вообще без тостов (для фонового опроса).
+    fun trigger(ctx: Context, quiet: Boolean = false) {
         val (host, port) = profile(ctx) ?: return
         Thread {
             try {
@@ -33,11 +34,11 @@ object SyncAuto {
                 val session = SyncSession(host, port, repo.deviceId(),
                     android.os.Build.MODEL, null)
                 val r = session.run(repo)
-                if (r.conflicts > 0) {
+                if (r.conflicts > 0 && !quiet) {
                     toast(ctx, "Синхронизировано, есть конфликты — откройте «Конфликты».")
                 }
             } catch (e: Exception) {
-                toast(ctx, "Автосинхронизация не удалась: ${e.message}")
+                if (!quiet) toast(ctx, "Автосинхронизация не удалась: ${e.message}")
             }
         }.apply { isDaemon = true }.start()
     }

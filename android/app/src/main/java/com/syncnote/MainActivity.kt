@@ -18,6 +18,14 @@ import java.util.Date
 class MainActivity : AppCompatActivity() {
     private lateinit var repo: NotesRepository
     private lateinit var adapter: NotesAdapter
+    private val pollHandler = android.os.Handler(mainLooper)
+    private val poller = object : Runnable {
+        override fun run() {
+            SyncAuto.trigger(this@MainActivity, quiet = true)
+            refresh()
+            pollHandler.postDelayed(this, 5000)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -53,8 +61,14 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         refresh()
-        // Подтягиваем правки с ПК при возврате в список.
+        // Подтягиваем правки с ПК при возврате в список + опрос, пока открыты.
         SyncAuto.trigger(this)
+        pollHandler.postDelayed(poller, 5000)
+    }
+
+    override fun onPause() {
+        pollHandler.removeCallbacks(poller)
+        super.onPause()
     }
 
     private fun refresh() {
