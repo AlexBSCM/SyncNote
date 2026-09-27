@@ -32,14 +32,26 @@
                             <Button x:Name="DeleteButton" Content="Удалить" Width="100" Margin="8,0,0,0"
                                     Click="DeleteButton_Click" />
                         </StackPanel>
+                        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,4,0,0">
+                            <CheckBox x:Name="SelectAllNotesBox" Content="Выбрать все"
+                                      VerticalAlignment="Center"
+                                      Checked="SelectAllNotesBox_Changed"
+                                      Unchecked="SelectAllNotesBox_Changed" />
+                            <Button x:Name="DeleteCheckedButton" Content="Удалить выбранные"
+                                    Margin="8,0,0,0" Click="DeleteChecked_Click" />
+                        </StackPanel>
                         <ListBox x:Name="NotesList" SelectionChanged="NotesList_SelectionChanged">
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
-                                    <StackPanel Margin="0,2">
-                                        <TextBlock Text="{Binding Title}" FontWeight="Bold"
-                                                   TextTrimming="CharacterEllipsis" />
-                                        <TextBlock Text="{Binding UpdatedAt, StringFormat=g}"
-                                                   Opacity="0.6" FontSize="11" />
+                                    <StackPanel Orientation="Horizontal" Margin="0,2">
+                                        <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                                  VerticalAlignment="Center" />
+                                        <StackPanel Margin="6,0,0,0">
+                                            <TextBlock Text="{Binding Note.Title}" FontWeight="Bold"
+                                                       TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding Note.UpdatedAt, StringFormat=g}"
+                                                       Opacity="0.6" FontSize="11" />
+                                        </StackPanel>
                                     </StackPanel>
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
@@ -195,19 +207,8 @@
                             </ListBox.ItemTemplate>
                         </ListBox>
                         <TextBlock Text="Заметки в базе" FontWeight="Bold" Margin="0,12,0,4" />
-                        <CheckBox x:Name="SelectAllBox" Content="Выбрать все" Margin="0,0,0,4"
-                                  Checked="SelectAllBox_Changed" Unchecked="SelectAllBox_Changed" />
-                        <ListBox x:Name="AllNotesBox" MaxHeight="200">
-                            <ListBox.ItemTemplate>
-                                <DataTemplate>
-                                    <CheckBox Content="{Binding Note.Title}"
-                                              IsChecked="{Binding IsSelected, Mode=TwoWay}" />
-                                </DataTemplate>
-                            </ListBox.ItemTemplate>
-                        </ListBox>
-                        <Button x:Name="DeleteSelectedButton" Content="Удалить выбранные"
-                                Width="170" Margin="0,8,0,0" HorizontalAlignment="Left"
-                                Click="DeleteSelected_Click" />
+                        <TextBlock Text="Управление заметками — во вкладке «Заметки» (галочки, «Выбрать все»)."
+                                   TextWrapping="Wrap" Opacity="0.7" />
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
