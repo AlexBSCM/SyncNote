@@ -39,15 +39,30 @@ public partial class MainWindow : Window
         timer.Start();
     }
 
+    private bool _suppressSelection;
+
     private void RefreshList()
     {
-        // Выбор не трогаем, чтобы таймер не затирал набираемый текст:
-        // редактор обновляется только явным выбором/созданием/сохранением.
+        // Выбор сохраняем вручную: замена ItemsSource создаёт новые объекты
+        // и роняет выделение. Событие при этом подавляем, чтобы таймер
+        // не затирал набираемый текст.
         var selectedId = (NotesList.SelectedItem as Note)?.Id;
         var notes = _store.Search(SearchBox.Text);
-        NotesList.ItemsSource = notes;
-        if (selectedId is not null && notes.All(n => n.Id != selectedId))
-            NotesList.SelectedItem = null; // удалена с другой стороны
+        var keep = selectedId is not null
+            ? notes.FirstOrDefault(n => n.Id == selectedId)
+            : null;
+        // Подавляем событие, только если выбор сохранён; удаление с другой
+        // стороны показываем честно (пустое состояние).
+        _suppressSelection = keep is not null;
+        try
+        {
+            NotesList.ItemsSource = notes;
+            NotesList.SelectedItem = keep; // null, если удалена с другой стороны
+        }
+        finally
+        {
+            _suppressSelection = false;
+        }
         int conflicts = Conflicts.FindPairs(_store).Count;
         ConflictsButton.Content = $"Конфликты ({conflicts})";
         ConflictsButton.Visibility = conflicts > 0 ? Visibility.Visible : Visibility.Collapsed;
@@ -75,6 +90,8 @@ public partial class MainWindow : Window
 
     private void NotesList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
+        if (_suppressSelection)
+            return;
         if (NotesList.SelectedItem is Note note)
         {
             EmptyHint.Visibility = Visibility.Collapsed;
