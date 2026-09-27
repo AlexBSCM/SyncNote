@@ -59,7 +59,14 @@ cd D:\OpenCode\SyncNote\android
    через `adb reverse tcp:ПОРТ tcp:ПОРТ`.
 
 Настоящий Wi-Fi Direct (адрес GO вместо 127.0.0.1) — только на железе,
-см. `docs/manual-test.md` T6.
+см. `docs/manual-test.md` T6. Кнопка «Создать Wi-Fi Direct группу» в окне
+сопряжения поднимает автономного GO (проверяйте адаптер:
+`netsh wlan show drivers`); телефон ищет ПК по имени из QR.
+
+Bluetooth-резерв: ПК — «Принимать по Bluetooth» в окне сопряжения
+(устройство должно быть спарено в настройках ОС), телефон — кнопка
+«Подключиться по Bluetooth» → выбор спаренного ПК. Общий UUID см.
+`protocol/pairing-and-sync.md`. Проверка только на железе (T7).
 
 ## Известные ограничения
 
