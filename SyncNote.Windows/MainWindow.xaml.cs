@@ -73,6 +73,15 @@ public partial class MainWindow : Window
         }
     }
 
+    private void PairingButton_Click(object sender, RoutedEventArgs e)
+    {
+        var w = new PairingWindow(_store, SqliteNoteStore.DefaultPath)
+        {
+            Owner = this,
+        };
+        w.ShowDialog();
+    }
+
     private void RefreshChecklist()
     {
         if (NotesList.SelectedItem is Note note)

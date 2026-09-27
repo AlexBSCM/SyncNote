@@ -6,6 +6,8 @@ namespace SyncNote.Core;
 // Краткоживущие одноразовые токены сопряжения + доверенные устройства.
 // Токен: 128 бит, Base64Url (22 символа), TTL 5 минут, одноразовый.
 // Хранение: таблицы pairing_tokens / trusted_devices (схема v5).
+public sealed record TrustedDevice(string DeviceId, string Name, DateTime TrustedAt);
+
 public sealed class PairingService : IDisposable
 {
     public static readonly TimeSpan TokenTtl = TimeSpan.FromMinutes(5);
@@ -99,6 +101,23 @@ public sealed class PairingService : IDisposable
         cmd.CommandText = "SELECT 1 FROM trusted_devices WHERE device_id = $d;";
         cmd.Parameters.AddWithValue("$d", deviceId);
         return cmd.ExecuteScalar() is not null;
+    }
+
+    public IReadOnlyList<TrustedDevice> ListTrusted()
+    {
+        using var cmd = _db.CreateCommand();
+        cmd.CommandText = "SELECT device_id, name, trusted_at FROM trusted_devices ORDER BY trusted_at DESC;";
+        var result = new List<TrustedDevice>();
+        using var reader = cmd.ExecuteReader();
+        while (reader.Read())
+        {
+            result.Add(new TrustedDevice(
+                reader.GetString(0),
+                reader.GetString(1),
+                DateTime.Parse(reader.GetString(2), null,
+                    System.Globalization.DateTimeStyles.RoundtripKind)));
+        }
+        return result;
     }
 
     public bool Untrust(string deviceId)

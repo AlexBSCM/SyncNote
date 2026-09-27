@@ -7,6 +7,10 @@
             <StatusBarItem>
                 <TextBlock x:Name="ConnectionStatus" Text="Не подключено" />
             </StatusBarItem>
+            <StatusBarItem HorizontalAlignment="Right">
+                <Button Content="Сопряжение…" Padding="8,0"
+                        Click="PairingButton_Click" />
+            </StatusBarItem>
         </StatusBar>
         <Grid>
             <Grid.ColumnDefinitions>
