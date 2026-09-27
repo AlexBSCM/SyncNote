@@ -214,6 +214,18 @@ class NotesRepository(ctx: Context) : SyncStore {
             arrayOf(noteId, rev))
     }
 
+    override fun noteSeenConflict(id: String, rev: Long, contentHash: String): Boolean {
+        db.readableDatabase.rawQuery(
+            "SELECT 1 FROM seen_conflicts WHERE note_id=? AND rev=? AND content_hash=?",
+            arrayOf(id, rev.toString(), contentHash)).use { c ->
+            if (c.count > 0) return true
+        }
+        db.writableDatabase.execSQL(
+            "INSERT OR IGNORE INTO seen_conflicts(note_id, rev, content_hash) VALUES(?, ?, ?)",
+            arrayOf(id, rev, contentHash))
+        return false
+    }
+
     override fun exportAll(): List<SyncNoteDto> {
         val ids = mutableListOf<String>()
         db.readableDatabase.rawQuery("SELECT id FROM notes", null).use { c ->

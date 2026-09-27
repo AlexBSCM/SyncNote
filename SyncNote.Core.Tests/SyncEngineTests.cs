@@ -53,8 +53,7 @@ public sealed class SyncEngineTests
     }
 
     [TestMethod]
-    public void DivergentEdits_KeepBoth()
-    {
+    public void DivergentEdits_KeepBoth()    {
         var (a, b) = TwoDevices();
         var note = a.Add("Общая", "база");
         SyncAll(a, b);
@@ -146,5 +145,32 @@ public sealed class SyncEngineTests
                 File.ReadAllBytes(Path.Combine(b.FilesDirectory, got[0].StoredName)));
         }
         finally { File.Delete(src); }
+    }
+
+    [TestMethod]
+    public void Conflict_Retry_DoesNotDuplicate()
+    {
+        var (a, b) = TwoDevices();
+        var note = a.Add("Общая", "база");
+        SyncAll(a, b);
+
+        var na = a.TryGet(note.Id)!;
+        na.Title = "Версия A";
+        a.Update(na);
+        var nb = b.TryGet(note.Id)!;
+        nb.Title = "Версия B";
+        b.Update(nb);
+
+        var dtoA = a.Export().First(d => d.Id == note.Id);
+        var (r1, c1) = b.Apply(dtoA);
+        Assert.AreEqual(ApplyResult.Conflict, r1);
+        Assert.IsNotNull(c1);
+        Assert.AreEqual(2, b.List().Count);
+
+        // Повтор той же версии — без новой копии.
+        var (r2, c2) = b.Apply(dtoA);
+        Assert.AreEqual(ApplyResult.NoOp, r2);
+        Assert.IsNull(c2);
+        Assert.AreEqual(2, b.List().Count);
     }
 }

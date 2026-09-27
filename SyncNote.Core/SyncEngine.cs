@@ -28,6 +28,13 @@ public static class SyncEngine
                 store.SetSyncRev(dto.Id, Math.Max(syncRev, dto.Rev));
                 return (ApplyResult.NoOp, null);
             }
+            // Та же ревизия, разное содержимое: копия — один раз на хеш.
+            var hash = ContentHash(dto);
+            if (store.NoteSeenConflict(dto.Id, dto.Rev, hash))
+            {
+                store.SetSyncRev(dto.Id, Math.Max(syncRev, dto.Rev));
+                return (ApplyResult.NoOp, null);
+            }
             return MakeConflictCopy(store, dto, fileBytes);
         }
 
@@ -42,7 +49,26 @@ public static class SyncEngine
             return (ApplyResult.FastForwarded, null);
         }
 
+        // Расхождение: копия — один раз на хеш входящей версии.
+        var incomingHash = ContentHash(dto);
+        if (store.NoteSeenConflict(dto.Id, dto.Rev, incomingHash))
+            return (ApplyResult.NoOp, null);
         return MakeConflictCopy(store, dto, fileBytes);
+    }
+
+    public static string ContentHash(SyncNoteDto dto)
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.Append(dto.Title).Append('\0').Append(dto.Body).Append('\0')
+            .Append(dto.IsDeleted ? '1' : '0').Append('\0');
+        foreach (var c in dto.Checklist.OrderBy(c => c.Position))
+            sb.Append(c.Position).Append(':').Append(c.Text).Append(':')
+                .Append(c.IsChecked ? '1' : '0').Append('\0');
+        foreach (var s in dto.Attachments.Select(a => a.Sha256).OrderBy(s => s))
+            sb.Append(s).Append('\0');
+        return Convert.ToHexString(
+            System.Security.Cryptography.SHA256.HashData(
+                System.Text.Encoding.UTF8.GetBytes(sb.ToString()))).ToLowerInvariant();
     }
 
     private static (ApplyResult, ConflictInfo?) MakeConflictCopy(

@@ -4,10 +4,10 @@ import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 
-// Локальное хранилище (зеркало схемы Core v5: notes + norms, checklist,
-// attachments, syncstate, keyvalue). Файлы — в filesDir.
+// Локальное хранилище (зеркало схемы Core: notes + norms, checklist,
+// attachments, syncstate, seen_conflicts, keyvalue). Файлы — в filesDir.
 class NotesDbHelper(ctx: Context) :
-    SQLiteOpenHelper(ctx, "notes.db", null, 6) {
+    SQLiteOpenHelper(ctx, "notes.db", null, 7) {
 
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL("CREATE TABLE keyvalue(key TEXT PRIMARY KEY, value TEXT NOT NULL)");
@@ -28,16 +28,32 @@ class NotesDbHelper(ctx: Context) :
             size INTEGER NOT NULL, sha256 TEXT NOT NULL, stored_name TEXT NOT NULL)""")
         db.execSQL("CREATE INDEX idx_attachments_note ON attachments(note_id)")
         db.execSQL("CREATE TABLE syncstate(note_id TEXT PRIMARY KEY, sync_rev INTEGER NOT NULL DEFAULT 0)")
-        db.execSQL("INSERT INTO keyvalue(key, value) VALUES('schema_version', '5')")
+        db.execSQL("""CREATE TABLE seen_conflicts(
+            note_id TEXT NOT NULL, rev INTEGER NOT NULL,
+            content_hash TEXT NOT NULL,
+            PRIMARY KEY (note_id, rev, content_hash))""")
+        db.execSQL("INSERT INTO keyvalue(key, value) VALUES('schema_version', '7')")
         ensureDeviceId(db)
     }
 
     override fun onUpgrade(db: SQLiteDatabase, old: Int, current: Int) {
         if (old < 6) {
-            // v5 -> v6: канонические id без дефисов. Дубли (dashed + N-форма
-            // одной заметки) сливаем, одиночные dashed конвертируем.
-            db.beginTransaction()
-            try {
+            // v5 -> v6: канонические id без дефисов (см. ниже v6->v7 для seen).
+            v5to6(db)
+        }
+        if (old < 7) {
+            db.execSQL("""CREATE TABLE IF NOT EXISTS seen_conflicts(
+                note_id TEXT NOT NULL, rev INTEGER NOT NULL,
+                content_hash TEXT NOT NULL,
+                PRIMARY KEY (note_id, rev, content_hash))""")
+        }
+    }
+
+    private fun v5to6(db: SQLiteDatabase) {
+        // v5 -> v6: канонические id без дефисов. Дубли (dashed + N-форма
+        // одной заметки) сливаем, одиночные dashed конвертируем.
+        db.beginTransaction()
+        try {
                 db.execSQL("""UPDATE checklist_items SET note_id = REPLACE(note_id, '-', '')
                     WHERE note_id LIKE '%-%'""")
                 db.execSQL("""UPDATE attachments SET note_id = REPLACE(note_id, '-', '')
@@ -60,7 +76,6 @@ class NotesDbHelper(ctx: Context) :
             } finally {
                 db.endTransaction()
             }
-        }
     }
 
     private fun ensureDeviceId(db: SQLiteDatabase) {

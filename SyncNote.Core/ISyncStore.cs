@@ -10,4 +10,8 @@ public interface ISyncStore : INoteStore
     Attachment ImportAttachment(Guid noteId, string fileName, string mime, byte[] content);
     void ImportFull(SyncNoteDto dto, Func<string, byte[]?> fileBytes);
     string DeviceId { get; }
+
+    // Защита от повторных копий конфликта: true, если (id, rev) с таким
+    // хешем содержимого уже порождал копию (и тогда же запоминаем).
+    bool NoteSeenConflict(Guid id, long rev, string contentHash);
 }

@@ -13,4 +13,5 @@ interface SyncStore {
     fun attachments(noteId: String): List<Attachment>
     fun deviceId(): String
     fun filesDir(): File
+    fun noteSeenConflict(id: String, rev: Long, contentHash: String): Boolean
 }

@@ -142,6 +142,17 @@ public sealed class InMemoryNoteStore : ISyncStore
 
     public void SetSyncRev(Guid noteId, long rev) => _syncRevs[noteId] = rev;
 
+    private readonly HashSet<(Guid, long, string)> _seenConflicts = new();
+
+    public bool NoteSeenConflict(Guid id, long rev, string contentHash)
+    {
+        var key = (id, rev, contentHash);
+        if (_seenConflicts.Contains(key))
+            return true;
+        _seenConflicts.Add(key);
+        return false;
+    }
+
     public void ImportFull(SyncNoteDto dto, Func<string, byte[]?> fileBytes)
     {
         var existing = TryGet(dto.Id);

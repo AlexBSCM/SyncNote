@@ -13,11 +13,18 @@ class SyncEngineTest {
         val items = mutableMapOf<String, MutableList<ChecklistItem>>()
         val files = mutableMapOf<String, MutableList<Attachment>>()
         val syncs = mutableMapOf<String, Long>()
+        val seen = mutableSetOf<Triple<String, Long, String>>()
         val dir: File = createTempDir("fakefiles")
 
         override fun tryGet(id: String) = notes[id]
         override fun getSyncRev(id: String) = syncs[id] ?: 0
         override fun setSyncRev(id: String, rev: Long) { syncs[id] = rev }
+        override fun noteSeenConflict(id: String, rev: Long, h: String): Boolean {
+            val k = Triple(id, rev, h)
+            if (k in seen) return true
+            seen += k
+            return false
+        }
         override fun checklist(noteId: String) = items[noteId] ?: emptyList()
         override fun attachments(noteId: String) = files[noteId] ?: emptyList()
         override fun deviceId() = "fake-device"
@@ -95,6 +102,26 @@ class SyncEngineTest {
         assertEquals("Версия B", b.notes[n.id]!!.title)
         val copy = b.notes[conflict!!.copyId]!!
         assertTrue(copy.title.endsWith(SyncEngine.COPY_SUFFIX))
+        assertEquals(2, b.notes.size)
+    }
+
+    @Test fun conflictRetry_noDuplicate() {
+        val a = FakeStore()
+        val b = FakeStore()
+        val n = a.add("Общая", "база")
+        SyncEngine.apply(b, a.exportAll().first { it.id == n.id })
+
+        a.edit(n.id, "Версия A")
+        b.edit(n.id, "Версия B")
+        val dtoA = a.exportAll().first { it.id == n.id }
+        val (r1, c1) = SyncEngine.apply(b, dtoA)
+        assertEquals(ApplyResult.Conflict, r1)
+        assertNotNull(c1)
+        assertEquals(2, b.notes.size)
+
+        val (r2, c2) = SyncEngine.apply(b, dtoA)
+        assertEquals(ApplyResult.NoOp, r2)
+        assertNull(c2)
         assertEquals(2, b.notes.size)
     }
 

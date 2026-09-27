@@ -65,10 +65,21 @@ class SyncSession(
             if (greet.getString("t") != "hello_ok")
                 throw HelloRejectedException(greet.optString("reason", "отказ без причины"))
 
-            for (dto in store.exportAll()) {
+            val knowledge = JSONArray()
+            val all = store.exportAll()
+            for (dto in all) knowledge.put(JSONObject()
+                .put("id", dto.id).put("rev", dto.rev))
+            writeFrame(out, JSONObject()
+                .put("t", "sync_begin").put("knowledge", knowledge))
+
+            for (dto in all) {
+                if (store.tryGet(dto.id) != null && dto.rev <= store.getSyncRev(dto.id))
+                    continue
                 sendNote(store, out, dto)
-                readFrame(inp) // applied
+                val ack = readFrame(inp) // applied
                 pushed++
+                if (ack.optString("result") in listOf("Inserted", "FastForwarded", "NoOp"))
+                    store.setSyncRev(dto.id, dto.rev)
             }
             writeFrame(out, JSONObject().put("t", "sync_end"))
 

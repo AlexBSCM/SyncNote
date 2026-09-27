@@ -33,13 +33,13 @@ Windows показывает QR с JSON (пример):
 hello       { t, deviceId, deviceName, token? }   // первое сообщение клиента
 hello_ok    { t, serverDeviceId }                 // сервер принял
 hello_err   { t, reason }                         // token неверный/истёк/использован
-trust_list  / untrust — управление доверенными (только локально на сервере)
-sync_begin  { t, deviceId, baseRev }              // начало сессии
+sync_begin  { t, knowledge: [{id, rev}] }         // ревизии клиента
 note_upsert { t, note, checklist, attachments[] } // note: id/rev/title/body/updatedAt/author/baseRev
 note_delete { t, id, rev, author }
 file_begin  { t, attachmentId, name, size, sha256 }
 file_chunk  { t, attachmentId, offset, data_b64 }
 file_end    { t, attachmentId }
+applied     { t, id, result, copyId? }            // квитанция
 sync_end    { t }
 conflict    { t, id, keptRev, copyId }            // уведомление о сохранённой копии
 error       { t, reason }                         // явная ошибка, без молчаливых отказов
@@ -55,6 +55,11 @@ error       { t, reason }                         // явная ошибка, б
   (`incoming.baseRev < local.syncRev` и `local.rev > local.syncRev`)
   → конфликт: локальная версия остаётся, входящая сохраняется КОПИЕЙ
   с новым id и пометкой; удаление/выбор копии не теряет данные.
+- Повтор той же конфликтной версии копий не плодит: запоминается
+  `(id, rev, sha256 содержимого)` — seen_conflicts.
+- Экономия трафика: клиент не шлёт заметки без правок (`rev <= syncRev`);
+  сервер не шлёт то, что у клиента новее или взаимно синхронно;
+  после квитанции `applied` обе стороны двигают `syncRev`.
 - Вложения: приём во временный файл, проверка sha256, затем атомарное
   перемещение. Обрыв середины не портит хранилище.
 - В логах запрещены содержимое заметок, токены и ключи.

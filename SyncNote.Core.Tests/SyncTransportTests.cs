@@ -134,4 +134,30 @@ public sealed class SyncTransportTests
                 File.ReadAllBytes(Path.Combine(serverStore.FilesDirectory, files[0].StoredName)));
         }
     }
+
+    [TestMethod]
+    public async Task SecondSession_SendsNothing_WhenUnchanged()
+    {
+        using var serverStore = new SqliteNoteStore(TempDb("srv"));
+        using var clientStore = new SqliteNoteStore(TempDb("cli"));
+        serverStore.Add("Общая", "база");
+
+        using var pairing = PairingService.Open(TempDb("pair"));
+        var (token, _) = pairing.IssueToken();
+        using var server = new SyncServer(serverStore, pairing, 0);
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        var run = server.RunAsync(cts.Token);
+
+        var mkClient = (string? tok) => new SyncClient("127.0.0.1", server.Port,
+            clientStore.DeviceId, "Phone", tok);
+        var first = await mkClient(token).PushAndPullAsync(clientStore, cts.Token);
+        Assert.AreEqual(1, first.Pulled);
+
+        // Вторая сессия без изменений: ни туда, ни обратно.
+        var second = await mkClient(null).PushAndPullAsync(clientStore, cts.Token);
+        Assert.AreEqual(0, second.Pushed);
+        Assert.AreEqual(0, second.Pulled);
+        cts.Cancel();
+        await run;
+    }
 }

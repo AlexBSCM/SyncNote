@@ -9,8 +9,10 @@ public sealed class HelloRejectedException(string reason)
     public string Reason { get; } = reason;
 }
 
-// Сессия поверх любого дуплексного Stream: TCP (петля, Wi-Fi Direct)
+// Сессия поверх любого дуплексного Stream: TCP (петля, Wi-Fi Direct, LAN)
 // или RFCOMM (Bluetooth-резерв). Кадры и сообщения — те же.
+// Экономия трафика: клиент шлёт только правки (rev > syncRev) и карту
+// знаний (sync_begin); сервер не шлёт неизменённое с обеих сторон.
 public static class StreamSession
 {
     public static async Task ServerSideAsync(
@@ -53,43 +55,33 @@ public static class StreamSession
             }, ct);
 
             var pending = new Dictionary<string, (string Name, string Mime, byte[] Bytes)>();
+            var (knowledge, firstExtra) = await ReadKnowledgeAsync(stream, ct);
+            if (firstExtra is not null)
+            {
+                await HandleClientMessage(store, stream, firstExtra, pending, ct);
+                if (firstExtra["t"]?.GetValue<string>() == "sync_end")
+                    goto PushPhase;
+            }
             while (true)
             {
                 var msg = await Frame.ReadAsync(stream, ct);
                 var type = msg["t"]?.GetValue<string>();
                 if (type == "sync_end")
                     break;
-                if (type == "file_begin" || type == "file_chunk" || type == "file_end")
-                {
-                    BufferFileChunk(msg, pending);
-                    continue;
-                }
-                if (type == "note_upsert")
-                {
-                    var dto = SyncJson.FromNode(msg["note"]!);
-                    var (result, conflict) = store.Apply(dto,
-                        sha => pending.TryGetValue(sha, out var f) ? f.Bytes : null);
-                    pending.Clear();
-                    ServerLog.Line($"applied rev={dto.Rev} -> {result}");
-                    var ack = new JsonObject
-                    {
-                        ["t"] = "applied",
-                        ["id"] = dto.Id.ToString("N"),
-                        ["result"] = result.ToString(),
-                    };
-                    if (conflict is not null)
-                        ack["copyId"] = conflict.CopyId.ToString("N");
-                    await Frame.WriteAsync(stream, ack, ct);
-                    continue;
-                }
-                await SendErr(stream, $"неизвестный тип {type}", ct);
-                return;
+                await HandleClientMessage(store, stream, msg, pending, ct);
             }
 
+        PushPhase:
             foreach (var dto in store.Export())
             {
+                var idN = dto.Id.ToString("N");
+                if (knowledge.TryGetValue(idN, out var kr) && kr >= dto.Rev
+                    && dto.Rev <= store.GetSyncRev(dto.Id))
+                    continue;
                 await SendNoteAsync(store, stream, dto, ct);
-                await Frame.ReadAsync(stream, ct); // applied
+                var ack = await Frame.ReadAsync(stream, ct); // applied
+                if (ack["result"]?.GetValue<string>() is "Inserted" or "FastForwarded" or "NoOp")
+                    store.SetSyncRev(dto.Id, dto.Rev);
             }
             await Frame.WriteAsync(stream, new JsonObject { ["t"] = "sync_end" }, ct);
             ServerLog.Line("session ok");
@@ -106,6 +98,58 @@ public static class StreamSession
             var msg = ex.Message.Length > 200 ? ex.Message[..200] : ex.Message;
             ServerLog.Line($"session fail: {ex.GetType().Name}: {msg}");
         }
+    }
+
+    // Карта ревизий клиента (может отсутствовать у старых версий —
+    // тогда второе значение содержит первое сообщение потока).
+    private static async Task<(Dictionary<string, long> Knowledge, JsonObject? FirstExtra)> ReadKnowledgeAsync(
+        Stream stream, CancellationToken ct)
+    {
+        var result = new Dictionary<string, long>();
+        var first = await Frame.ReadAsync(stream, ct);
+        if (first["t"]?.GetValue<string>() != "sync_begin")
+            return (result, first);
+        foreach (var item in first["knowledge"]?.AsArray() ?? new JsonArray())
+        {
+            var o = item!.AsObject();
+            result[o["id"]!.GetValue<string>()] = o["rev"]!.GetValue<long>();
+        }
+        return (result, null);
+    }
+
+    private static async Task HandleClientMessage(
+        ISyncStore store, Stream stream, JsonObject msg,
+        Dictionary<string, (string Name, string Mime, byte[] Bytes)> pending,
+        CancellationToken ct)
+    {
+        var type = msg["t"]?.GetValue<string>();
+        if (type == "file_begin" || type == "file_chunk" || type == "file_end")
+        {
+            BufferFileChunk(msg, pending);
+            return;
+        }
+        if (type == "note_upsert")
+        {
+            var dto = SyncJson.FromNode(msg["note"]!);
+            var (result, conflict) = store.Apply(dto,
+                sha => pending.TryGetValue(sha, out var f) ? f.Bytes : null);
+            pending.Clear();
+            ServerLog.Line($"applied rev={dto.Rev} -> {result}");
+            var ack = new JsonObject
+            {
+                ["t"] = "applied",
+                ["id"] = dto.Id.ToString("N"),
+                ["result"] = result.ToString(),
+            };
+            if (conflict is not null)
+                ack["copyId"] = conflict.CopyId.ToString("N");
+            await Frame.WriteAsync(stream, ack, ct);
+            return;
+        }
+        if (type == "sync_end")
+            return;
+        await SendErr(stream, $"неизвестный тип {type}", ct);
+        throw new IOException($"unknown message {type}");
     }
 
     public static async Task<SyncSessionResult> ClientSideAsync(
@@ -127,11 +171,29 @@ public static class StreamSession
             throw new HelloRejectedException(
                 greet["reason"]?.GetValue<string>() ?? "отказ без причины");
 
+        var knowledge = new JsonArray();
+        foreach (var dto in store.Export())
+            knowledge.Add(new JsonObject
+            {
+                ["id"] = dto.Id.ToString("N"),
+                ["rev"] = dto.Rev,
+            });
+        await Frame.WriteAsync(stream, new JsonObject
+        {
+            ["t"] = "sync_begin",
+            ["knowledge"] = knowledge,
+        }, ct);
+
         foreach (var dto in store.Export())
         {
+            // Своё неизменённое не шлём: ревизия не выше общей.
+            if (store.TryGet(dto.Id) is not null && dto.Rev <= store.GetSyncRev(dto.Id))
+                continue;
             await SendNoteAsync(store, stream, dto, ct);
-            await Frame.ReadAsync(stream, ct); // applied
+            var ack = await Frame.ReadAsync(stream, ct); // applied
             pushed++;
+            if (ack["result"]?.GetValue<string>() is "Inserted" or "FastForwarded" or "NoOp")
+                store.SetSyncRev(dto.Id, dto.Rev);
         }
         await Frame.WriteAsync(stream, new JsonObject { ["t"] = "sync_end" }, ct);
 

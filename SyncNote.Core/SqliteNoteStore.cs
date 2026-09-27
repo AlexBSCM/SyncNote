@@ -7,7 +7,7 @@ namespace SyncNote.Core;
 // keyvalue(key, value) — schema_version и device_id.
 public sealed class SqliteNoteStore : ISyncStore, IDisposable
 {
-    private const int SchemaVersion = 5;
+    private const int SchemaVersion = 6;
     private readonly SqliteConnection _db;
     private readonly string _deviceId;
     private readonly string _filesDir;
@@ -62,7 +62,7 @@ public sealed class SqliteNoteStore : ISyncStore, IDisposable
         var version = versionText is not null && int.TryParse(versionText, out var v) ? v : 0;
         if (version == 0)
         {
-            // Свежая установка: полная схема v5 сразу.
+            // Свежая установка: полная схема v6 сразу.
             cmd.CommandText = """
                 ALTER TABLE notes ADD COLUMN title_norm TEXT NOT NULL DEFAULT '';
                 ALTER TABLE notes ADD COLUMN body_norm TEXT NOT NULL DEFAULT '';
@@ -87,9 +87,14 @@ public sealed class SqliteNoteStore : ISyncStore, IDisposable
                 CREATE TABLE IF NOT EXISTS syncstate(
                     note_id TEXT PRIMARY KEY,
                     sync_rev INTEGER NOT NULL DEFAULT 0);
+                CREATE TABLE IF NOT EXISTS seen_conflicts(
+                    note_id TEXT NOT NULL,
+                    rev INTEGER NOT NULL,
+                    content_hash TEXT NOT NULL,
+                    PRIMARY KEY (note_id, rev, content_hash));
                 """;
             cmd.ExecuteNonQuery();
-            SetValue(cmd, "schema_version", "5");
+            SetValue(cmd, "schema_version", "6");
         }
         else if (version == 1)
         {
@@ -164,6 +169,17 @@ public sealed class SqliteNoteStore : ISyncStore, IDisposable
                 """;
             cmd.ExecuteNonQuery();
             SetValue(cmd, "schema_version", "5");
+            version = 5;
+        }
+        if (version == 5)
+        {
+            // v5 -> v6: память о порождённых копиях конфликтов.
+            cmd.CommandText = "CREATE TABLE IF NOT EXISTS seen_conflicts(" +
+                "note_id TEXT NOT NULL, rev INTEGER NOT NULL, " +
+                "content_hash TEXT NOT NULL, " +
+                "PRIMARY KEY (note_id, rev, content_hash));";
+            cmd.ExecuteNonQuery();
+            SetValue(cmd, "schema_version", "6");
         }
         tx.Commit();
     }
@@ -521,6 +537,22 @@ public sealed class SqliteNoteStore : ISyncStore, IDisposable
         cmd.Parameters.AddWithValue("$n", noteId.ToString("N"));
         cmd.Parameters.AddWithValue("$r", rev);
         cmd.ExecuteNonQuery();
+    }
+
+    public bool NoteSeenConflict(Guid id, long rev, string contentHash)
+    {
+        using var cmd = _db.CreateCommand();
+        cmd.CommandText = "SELECT 1 FROM seen_conflicts " +
+            "WHERE note_id = $n AND rev = $r AND content_hash = $h;";
+        cmd.Parameters.AddWithValue("$n", id.ToString("N"));
+        cmd.Parameters.AddWithValue("$r", rev);
+        cmd.Parameters.AddWithValue("$h", contentHash);
+        if (cmd.ExecuteScalar() is not null)
+            return true;
+        cmd.CommandText = "INSERT OR IGNORE INTO seen_conflicts(note_id, rev, content_hash) " +
+            "VALUES($n, $r, $h);";
+        cmd.ExecuteNonQuery();
+        return false;
     }
 
     public IReadOnlyList<SyncNoteDto> Export()
