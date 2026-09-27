@@ -37,6 +37,9 @@ class MainActivity : AppCompatActivity() {
                 override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
                 override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
             })
+        findViewById<android.widget.Button>(R.id.syncButton).setOnClickListener {
+            startActivity(Intent(this, SyncActivity::class.java))
+        }
         findViewById<android.widget.Button>(R.id.addButton).setOnClickListener {
             val n = repo.add("Новая заметка", "")
             startActivity(Intent(this, EditorActivity::class.java)

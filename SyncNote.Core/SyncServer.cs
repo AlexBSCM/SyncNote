@@ -96,7 +96,7 @@ public sealed class SyncServer : IAsyncDisposable, IDisposable
                     }
                     if (type == "note_upsert")
                     {
-                        var dto = msg["note"]!.Deserialize<SyncNoteDto>()!;
+                        var dto = SyncJson.FromNode(msg["note"]!);
                         var (result, conflict) = _store.Apply(dto,
                             sha => pending.TryGetValue(sha, out var f) ? f.Bytes : null);
                         pending.Clear();
@@ -196,7 +196,7 @@ public sealed class SyncServer : IAsyncDisposable, IDisposable
         await Frame.WriteAsync(stream, new JsonObject
         {
             ["t"] = "note_upsert",
-            ["note"] = JsonSerializer.SerializeToNode(dto),
+            ["note"] = SyncJson.ToNode(dto),
         }, ct);
     }
 
