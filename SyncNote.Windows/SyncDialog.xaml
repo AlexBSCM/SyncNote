@@ -6,7 +6,7 @@
         <TextBlock Text="Узел" Margin="0,0,0,4" />
         <TextBox x:Name="HostBox" Text="127.0.0.1" Margin="0,0,0,8" />
         <TextBlock Text="Порт" Margin="0,0,0,4" />
-        <TextBox x:Name="PortBox" Margin="0,0,0,8" />
+        <TextBox x:Name="PortBox" Text="48211" Margin="0,0,0,8" />
         <TextBlock Text="Токен сопряжения (для первого подключения)" Margin="0,0,0,4" />
         <TextBox x:Name="TokenBox" Margin="0,0,0,8" />
         <TextBlock Text="Имя устройства" Margin="0,0,0,4" />
