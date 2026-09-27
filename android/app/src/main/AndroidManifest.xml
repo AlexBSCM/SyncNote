@@ -30,7 +30,12 @@
             android:exported="false" />
         <activity
             android:name=".SyncActivity"
-            android:exported="false" />
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.syncnote.action.SYNC_NOW" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.provider"

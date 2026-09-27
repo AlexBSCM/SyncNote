@@ -59,17 +59,27 @@ class SyncActivity : AppCompatActivity(), P2pConnector.Listener {
         }
         // Автотесты железа: am start -a com.syncnote.action.SYNC_NOW
         // [--es host H --ei port P --es token T] — полный цикл без taps.
-        if (intent?.action == ACTION_SYNC_NOW) {
-            intent.getStringExtra(EXTRA_HOST)?.let {
-                findViewById<EditText>(R.id.hostBox).setText(it)
-            }
-            val p = intent.getIntExtra(EXTRA_PORT, 0)
-            if (p > 0) findViewById<EditText>(R.id.portBox).setText(p.toString())
-            intent.getStringExtra(EXTRA_TOKEN)?.let {
-                findViewById<EditText>(R.id.tokenBox).setText(it)
-            }
-            findViewById<Button>(R.id.syncButton).post { runSync() }
+        handleSyncIntent(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleSyncIntent(intent)
+    }
+
+    private fun handleSyncIntent(intent: Intent?) {
+        if (intent?.action != ACTION_SYNC_NOW) return
+        intent.getStringExtra(EXTRA_HOST)?.let {
+            findViewById<EditText>(R.id.hostBox).setText(it)
         }
+        val p = intent.getIntExtra(EXTRA_PORT, 0)
+        if (p > 0) findViewById<EditText>(R.id.portBox).setText(p.toString())
+        intent.getStringExtra(EXTRA_TOKEN)?.let {
+            findViewById<EditText>(R.id.tokenBox).setText(it)
+        }
+        findViewById<Button>(R.id.syncButton).post { runSync() }
+    }
         findViewById<ListView>(R.id.peersList)?.setOnItemClickListener { _, _, pos, _ ->
             p2p.connect(peers[pos])
         }
