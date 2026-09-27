@@ -101,7 +101,11 @@ public static class StreamSession
                 .GetFrames().Take(6).Select(f => f.GetMethod()?.Name));
             ServerLog.Line($"session cancelled: {stack}");
         }
-        catch (Exception ex) { ServerLog.Line($"session fail: {ex.GetType().Name}"); }
+        catch (Exception ex)
+        {
+            var msg = ex.Message.Length > 200 ? ex.Message[..200] : ex.Message;
+            ServerLog.Line($"session fail: {ex.GetType().Name}: {msg}");
+        }
     }
 
     public static async Task<SyncSessionResult> ClientSideAsync(
