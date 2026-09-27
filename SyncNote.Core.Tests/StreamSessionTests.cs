@@ -5,6 +5,10 @@ namespace SyncNote.Core.Tests;
 [TestClass]
 public sealed class StreamSessionTests
 {
+    [TestInitialize]
+    public void RedirectLog() =>
+        ServerLog.Path = Path.Combine(Path.GetTempPath(), $"syncnote-test-{Guid.NewGuid():N}.log");
+
     private static string TempDb(string tag) =>
         Path.Combine(Path.GetTempPath(), $"syncnote-stream-{tag}-{Guid.NewGuid():N}.db");
 

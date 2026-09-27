@@ -5,7 +5,9 @@ namespace SyncNote.Core;
 public static class ServerLog
 {
     private static readonly object _lock = new();
-    private static string _path = Path.Combine(
+
+    // Тесты перенаправляют сюда свой файл, чтобы не смешиваться с продом.
+    public static string Path { get; set; } = System.IO.Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "SyncNote", "server.log");
 
@@ -14,7 +16,7 @@ public static class ServerLog
         try
         {
             lock (_lock)
-                File.AppendAllText(_path,
+                File.AppendAllText(Path,
                     $"{DateTime.UtcNow:HH:mm:ss} {text}{Environment.NewLine}");
         }
         catch { }

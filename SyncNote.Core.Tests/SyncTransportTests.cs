@@ -8,6 +8,10 @@ public sealed class SyncTransportTests
     private static string TempDb(string tag) =>
         Path.Combine(Path.GetTempPath(), $"syncnote-{tag}-{Guid.NewGuid():N}.db");
 
+    [TestInitialize]
+    public void RedirectLog() =>
+        ServerLog.Path = Path.Combine(Path.GetTempPath(), $"syncnote-test-{Guid.NewGuid():N}.log");
+
     [TestMethod]
     public async Task FullSession_WithToken_SyncsNotesAndFiles()
     {
