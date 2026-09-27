@@ -1,0 +1,20 @@
+# .NET
+bin/
+obj/
+*.user
+.vs/
+
+# Android / Gradle
+.gradle/
+**/build/
+local.properties
+*.apk
+hs_err_*.log
+
+# IDE
+.idea/
+*.iml
+
+# OS
+Thumbs.db
+Desktop.ini
