@@ -22,6 +22,9 @@
         android:label="SyncNote"
         android:supportsRtl="true">
         <activity
+            android:name=".ConflictsActivity"
+            android:exported="false" />
+        <activity
             android:name=".QrScanActivity"
             android:exported="false" />
         <activity

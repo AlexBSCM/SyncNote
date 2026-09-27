@@ -40,6 +40,9 @@ class MainActivity : AppCompatActivity() {
         findViewById<android.widget.Button>(R.id.syncButton).setOnClickListener {
             startActivity(Intent(this, SyncActivity::class.java))
         }
+        findViewById<android.widget.Button>(R.id.conflictsButton).setOnClickListener {
+            startActivity(Intent(this, ConflictsActivity::class.java))
+        }
         findViewById<android.widget.Button>(R.id.addButton).setOnClickListener {
             val n = repo.add("Новая заметка", "")
             startActivity(Intent(this, EditorActivity::class.java)
