@@ -20,16 +20,18 @@ class SyncSession(
     private val deviceName: String,
     private val token: String?
 ) {
-    fun run(store: SyncStore): SyncSessionResult {
+    fun run(store: SyncStore, tmpDir: File? = null): SyncSessionResult {
         Socket(host, port).use { sock ->
+            val def = tmpDir ?: File(System.getProperty("java.io.tmpdir") ?: "/data/local/tmp")
             return runOverStreams(store,
                 DataInputStream(sock.getInputStream()),
-                DataOutputStream(sock.getOutputStream()))
+                DataOutputStream(sock.getOutputStream()), def)
         }
     }
 
     fun runOverStreams(
-        store: SyncStore, inp: DataInputStream, out: DataOutputStream
+        store: SyncStore, inp: DataInputStream, out: DataOutputStream,
+        tmpDir: File = File(System.getProperty("java.io.tmpdir") ?: "/data/local/tmp")
     ): SyncSessionResult {
         run {
             var pushed = 0
@@ -54,16 +56,19 @@ class SyncSession(
             writeFrame(out, JSONObject().put("t", "sync_end"))
 
             val pending = mutableMapOf<String, PendingFile>()
+            try {
             while (true) {
                 val msg = readFrame(inp)
                 when (msg.getString("t")) {
                     "sync_end" -> break
                     "file_begin", "file_chunk", "file_end" ->
-                        bufferChunk(msg, pending)
+                        bufferChunk(msg, pending, tmpDir)
                     "note_upsert" -> {
                         val dto = dtoFromJson(msg.getJSONObject("note"))
-                        val (result, _) = SyncEngine.apply(store, dto) { pending[it]?.bytes }
-                        pending.clear()
+                        val (result, _) = SyncEngine.apply(store, dto) { sha ->
+                            pending[sha]?.file?.readBytes()
+                        }
+                        discardPending(pending)
                         pulled++
                         if (result == ApplyResult.Conflict) conflicts++
                         writeFrame(out, JSONObject()
@@ -74,25 +79,49 @@ class SyncSession(
                     else -> throw java.io.IOException("Неожиданный тип ${msg.getString("t")}.")
                 }
             }
+            } finally {
+                discardPending(pending)
+            }
             return SyncSessionResult(pushed, pulled, conflicts)
         }
     }
 
-    private data class PendingFile(val name: String, val mime: String, var bytes: ByteArray)
+    private data class PendingFile(
+        val name: String, val mime: String, var file: File?, var size: Long = 0)
 
-    private fun bufferChunk(msg: JSONObject, pending: MutableMap<String, PendingFile>) {
+    private fun discardPending(pending: MutableMap<String, PendingFile>) {
+        for ((_, p) in pending) {
+            try { p.file?.delete() } catch (_: Exception) { }
+        }
+        pending.clear()
+    }
+
+    private fun bufferChunk(
+        msg: JSONObject, pending: MutableMap<String, PendingFile>, tmpDir: File
+    ) {
         val sha = msg.getString("sha")
         when (msg.getString("t")) {
-            "file_begin" -> pending[sha] = PendingFile(
-                msg.getString("name"), msg.getString("mime"), ByteArray(0))
+            "file_begin" -> {
+                val size = msg.getLong("size")
+                if (size < 0 || size > 100L * 1024 * 1024)
+                    throw java.io.IOException("Недопустимый размер файла: $size.")
+                discardPending(pending.filterKeys { it == sha }
+                    .toMutableMap().also { pending.remove(sha) })
+                val tmp = File.createTempFile("sync-", ".part", tmpDir)
+                pending[sha] = PendingFile(
+                    msg.getString("name"), msg.getString("mime"), tmp, 0)
+            }
             "file_chunk" -> {
                 val cur = pending[sha] ?: throw java.io.IOException("Чанк без file_begin.")
                 val part = android.util.Base64.decode(msg.getString("data_b64"), android.util.Base64.DEFAULT)
-                cur.bytes = cur.bytes + part
+                cur.file!!.appendBytes(part)
+                cur.size += part.size
+                if (cur.size > 100L * 1024 * 1024)
+                    throw java.io.IOException("Файл превышает лимит.")
             }
             "file_end" -> {
                 val cur = pending[sha] ?: throw java.io.IOException("Чанк без file_begin.")
-                val hex = sha256hex(cur.bytes)
+                val hex = sha256hex(cur.file!!.readBytes())
                 if (!hex.equals(sha, ignoreCase = true))
                     throw java.io.IOException("sha256 файла не сошлось.")
             }

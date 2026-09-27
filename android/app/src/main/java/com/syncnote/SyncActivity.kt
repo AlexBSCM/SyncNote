@@ -127,10 +127,10 @@ class SyncActivity : AppCompatActivity(), P2pConnector.Listener {
             try {
                 val session = SyncSession(host, port, repo.deviceId(),
                     android.os.Build.MODEL, token)
-                val r = session.run(repo)
-                SyncAuto.saveProfile(this@SyncActivity, host, port)
+                val r = session.run(repo, cacheDir)
                 android.util.Log.i("SyncNote",
                     "sync done pushed=${r.pushed} pulled=${r.pulled} conflicts=${r.conflicts}")
+                SyncAuto.saveProfile(this@SyncActivity, host, port)
                 runOnUiThread {
                     // Токен одноразовый: устройство теперь доверенное.
                     findViewById<EditText>(R.id.tokenBox).text.clear()
@@ -140,9 +140,10 @@ class SyncActivity : AppCompatActivity(), P2pConnector.Listener {
             } catch (e: HelloRejectedException) {
                 android.util.Log.i("SyncNote", "sync rejected: ${e.message}")
                 setState("Ошибка: ${e.message}")
-            } catch (e: Exception) {
-                android.util.Log.i("SyncNote", "sync error: ${e.message}")
-                setState("Ошибка: ${e.message}")
+            } catch (e: Throwable) {
+                android.util.Log.i("SyncNote",
+                    "sync error ${e.javaClass.simpleName}: ${e.message}")
+                setState("Ошибка: ${e.javaClass.simpleName}: ${e.message}")
             }
         }.start()
     }
