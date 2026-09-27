@@ -35,7 +35,7 @@ class SyncActivity : AppCompatActivity(), P2pConnector.Listener {
             pendingHosts = res.data!!.getStringArrayListExtra(QrScanActivity.EXTRA_HOSTS)
                 ?.filter { it.isNotBlank() } ?: listOf(host)
             if (host.isNotBlank() && port > 0)
-                SyncAuto.saveProfile(this, host, port)
+                SyncAuto.saveProfile(this, host, port, pendingHosts)
             setState("QR принят. Нажмите «Синхронизировать».")
         }
     }
@@ -135,7 +135,7 @@ class SyncActivity : AppCompatActivity(), P2pConnector.Listener {
                 val r = session.tryHosts(repo, cacheDir, hosts)
                 android.util.Log.i("SyncNote",
                     "sync done pushed=${r.pushed} pulled=${r.pulled} conflicts=${r.conflicts}")
-                SyncAuto.saveProfile(this@SyncActivity, host, port)
+                SyncAuto.saveProfile(this@SyncActivity, host, port, hosts)
                 runOnUiThread {
                     // Токен одноразовый: устройство теперь доверенное.
                     findViewById<EditText>(R.id.tokenBox).text.clear()
