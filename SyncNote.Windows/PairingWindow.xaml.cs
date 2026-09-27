@@ -43,7 +43,8 @@ public partial class PairingWindow : Window
     {
         if (_server is not null)
             return;
-        _server = new SyncServer(_store, _pairing, 0);
+        // Фиксированный порт: QR, adb reverse и правило брандмауэра переживают перезапуски.
+        _server = new SyncServer(_store, _pairing, 48211);
         _serverCts = new CancellationTokenSource();
         _serverTask = _server.RunAsync(_serverCts.Token);
         ServerInfo.Text = $"Принимаю подключения: 127.0.0.1:{_server.Port}";
