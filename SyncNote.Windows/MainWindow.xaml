@@ -11,10 +11,6 @@
                 <StackPanel Orientation="Horizontal">
                     <Button x:Name="ConflictsButton" Content="Конфликты (0)" Padding="8,0"
                             Visibility="Collapsed" Click="ConflictsButton_Click" />
-                    <Button Content="Синхронизировать…" Padding="8,0" Margin="8,0,0,0"
-                            Click="SyncButton_Click" />
-                    <Button Content="Сопряжение…" Padding="8,0" Margin="8,0,0,0"
-                            Click="PairingButton_Click" />
                 </StackPanel>
             </StatusBarItem>
         </StatusBar>
@@ -133,7 +129,52 @@
             <TabItem Header="Настройки">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="12">
-                        <TextBlock Text="Хранилище" FontWeight="Bold" />
+                        <TextBlock Text="Синхронизация" FontWeight="Bold" />
+                        <Grid Margin="0,4,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="90" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition />
+                                <RowDefinition />
+                                <RowDefinition />
+                                <RowDefinition />
+                            </Grid.RowDefinitions>
+                            <TextBlock Text="Узел" VerticalAlignment="Center" />
+                            <TextBox x:Name="SyncHostBox" Text="127.0.0.1" Grid.Column="1" Margin="0,2" />
+                            <TextBlock Text="Порт" Grid.Row="1" VerticalAlignment="Center" />
+                            <TextBox x:Name="SyncPortBox" Text="48211" Grid.Row="1" Grid.Column="1" Margin="0,2" />
+                            <TextBlock Text="Токен" Grid.Row="2" VerticalAlignment="Center" />
+                            <TextBox x:Name="SyncTokenBox" Grid.Row="2" Grid.Column="1" Margin="0,2" />
+                            <TextBlock Text="Имя" Grid.Row="3" VerticalAlignment="Center" />
+                            <TextBox x:Name="SyncDeviceBox" Grid.Row="3" Grid.Column="1" Margin="0,2" />
+                        </Grid>
+                        <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                            <Button x:Name="SyncGoButton" Content="Синхронизировать" Width="140"
+                                    Click="SyncGoButton_Click" />
+                            <Button x:Name="SyncCancelButton" Content="Отмена" Width="90" Margin="8,0,0,0"
+                                    IsEnabled="False" Click="SyncCancelButton_Click" />
+                        </StackPanel>
+                        <TextBlock x:Name="SyncStateText" Text="Не подключено" Margin="0,4,0,0"
+                                   TextWrapping="Wrap" Opacity="0.8" />
+                        <TextBlock Text="Сопряжение" FontWeight="Bold" Margin="0,12,0,4" />
+                        <TextBlock Text="Покажите QR-код на телефоне в приложении SyncNote."
+                                   TextWrapping="Wrap" Margin="0,0,0,4" />
+                        <Image x:Name="PairQrImage" Width="200" Height="200" Margin="0,0,0,4"
+                               HorizontalAlignment="Left" />
+                        <TextBlock x:Name="PairTokenInfo" TextWrapping="Wrap" Opacity="0.7" />
+                        <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                            <Button Content="Новый код" Width="110" Click="PairNewToken_Click" />
+                            <Button x:Name="P2pButton" Content="Создать Wi-Fi Direct группу" Width="220"
+                                    Margin="8,0,0,0" Click="P2pButton_Click" />
+                            <Button x:Name="BtButton" Content="Принимать по Bluetooth" Width="180"
+                                    Margin="8,0,0,0" Click="BtButton_Click" />
+                        </StackPanel>
+                        <TextBlock x:Name="PairServerInfo" TextWrapping="Wrap" Margin="0,4,0,0" />
+                        <TextBlock x:Name="P2pInfo" TextWrapping="Wrap" Opacity="0.7" />
+                        <TextBlock x:Name="BtInfo" TextWrapping="Wrap" Opacity="0.7" />
+                        <TextBlock Text="Хранилище" FontWeight="Bold" Margin="0,12,0,0" />
                         <TextBlock x:Name="StorageInfo" Margin="0,4,0,0" TextWrapping="Wrap" />
                         <TextBlock Text="Доверенные устройства" FontWeight="Bold" Margin="0,12,0,4" />
                         <ListBox x:Name="TrustedBox" MaxHeight="120">

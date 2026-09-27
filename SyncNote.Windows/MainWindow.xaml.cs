@@ -13,6 +13,9 @@ public partial class MainWindow : Window
     private readonly SyncServer _server;
     private readonly CancellationTokenSource _serverCts = new();
     private readonly Task _serverTask;
+    private CancellationTokenSource? _syncCts;
+    private readonly WifiDirectGroup _p2pGroup = new();
+    private BluetoothServer? _btServer;
 
     public MainWindow()
     {
@@ -22,11 +25,17 @@ public partial class MainWindow : Window
         _server = new SyncServer(_store, _pairing, SyncPort);
         _serverTask = _server.RunAsync(_serverCts.Token);
         ConnectionStatus.Text = $"Принимаю подключения: {SyncPort}";
+        SyncDeviceBox.Text = Environment.MachineName;
+        PairServerInfo.Text = $"Принимаю подключения: 127.0.0.1:{SyncPort}";
+        P2pInfo.Text = _p2pGroup.Status;
         Closed += (_, _) =>
         {
             try { _serverCts.Cancel(); } catch { }
+            try { _syncCts?.Cancel(); } catch { }
             _server.Dispose();
             _pairing.Dispose();
+            _p2pGroup.Dispose();
+            _btServer?.Dispose();
             _store.Dispose();
         };
         RefreshList();
@@ -170,14 +179,183 @@ public partial class MainWindow : Window
         RefreshList();
     }
 
-    private void SyncButton_Click(object sender, RoutedEventArgs e)
+    private void SetSyncState(string text)
     {
-        var w = new SyncDialog(
-            _store,
-            status => ConnectionStatus.Text = status,
-            RefreshList) { Owner = this };
-        w.ShowDialog();
-        RefreshList();
+        Dispatcher.Invoke(() =>
+        {
+            SyncStateText.Text = text;
+            ConnectionStatus.Text = text;
+        });
+    }
+
+    private async void SyncGoButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!int.TryParse(SyncPortBox.Text, out int port) || port is < 1 or > 65535)
+        {
+            SetSyncState("Ошибка: некорректный порт.");
+            return;
+        }
+        SyncGoButton.IsEnabled = false;
+        SyncCancelButton.IsEnabled = true;
+        _syncCts = new CancellationTokenSource();
+        SetSyncState("Ищем устройство…");
+        try
+        {
+            var token = string.IsNullOrWhiteSpace(SyncTokenBox.Text) ? null : SyncTokenBox.Text.Trim();
+            var client = new SyncClient(SyncHostBox.Text.Trim(), port,
+                _store.DeviceId, SyncDeviceBox.Text.Trim(), token);
+            SetSyncState("Синхронизируется…");
+            var result = await Task.Run(() => client.PushAndPullAsync(_store, _syncCts.Token));
+            SetSyncState($"Готово: отправлено {result.Pushed}, получено {result.Pulled}, " +
+                $"конфликтов {result.Conflicts}.");
+            RefreshList();
+            if (result.Conflicts > 0)
+            {
+                MessageBox.Show(this,
+                    "Есть конфликты — откройте «Конфликты» в строке состояния.",
+                    "Синхронизация", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            SetSyncState("Отменено пользователем. Хранилище не повреждено.");
+        }
+        catch (HelloRejectedException ex)
+        {
+            SetSyncState($"Ошибка: {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            SetSyncState($"Ошибка: {ex.Message}");
+        }
+        finally
+        {
+            SyncGoButton.IsEnabled = true;
+            SyncCancelButton.IsEnabled = false;
+        }
+    }
+
+    private void SyncCancelButton_Click(object sender, RoutedEventArgs e)
+    {
+        try { _syncCts?.Cancel(); } catch { }
+    }
+
+    private void PairNewToken_Click(object sender, RoutedEventArgs e) => IssuePairToken();
+
+    private void IssuePairToken()
+    {
+        var (token, exp) = _pairing.IssueToken();
+        var hosts = GetLanHosts();
+        var json = System.Text.Json.JsonSerializer.Serialize(new
+        {
+            v = 1,
+            host = hosts.Count > 0 ? hosts[0] : "127.0.0.1",
+            hosts,
+            port = SyncPort,
+            p2pName = Environment.MachineName,
+            token,
+            exp = ((DateTimeOffset)exp).ToUnixTimeSeconds(),
+        });
+        PairQrImage.Source = RenderQr(json);
+        PairTokenInfo.Text = $"Код действует до {exp:HH:mm:ss} (5 минут, одноразовый).";
+        RefreshSettings();
+    }
+
+    private static List<string> GetLanHosts()
+    {
+        var withGateway = new List<string>();
+        var others = new List<string>();
+        try
+        {
+            foreach (var ni in System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces())
+            {
+                if (ni.OperationalStatus != System.Net.NetworkInformation.OperationalStatus.Up)
+                    continue;
+                bool hasGateway = ni.GetIPProperties().GatewayAddresses.Count > 0;
+                foreach (var addr in ni.GetIPProperties().UnicastAddresses)
+                {
+                    var ip = addr.Address;
+                    if (ip.AddressFamily != System.Net.Sockets.AddressFamily.InterNetwork
+                        || System.Net.IPAddress.IsLoopback(ip))
+                        continue;
+                    (hasGateway ? withGateway : others).Add(ip.ToString());
+                }
+            }
+        }
+        catch { }
+        var result = withGateway.Concat(others).Distinct().ToList();
+        return result.Count > 0 ? result : new List<string> { "127.0.0.1" };
+    }
+
+    private static System.Windows.Media.Imaging.BitmapImage RenderQr(string text)
+    {
+        using var gen = new QRCoder.QRCodeGenerator();
+        using var data = gen.CreateQrCode(text, QRCoder.QRCodeGenerator.ECCLevel.M);
+        using var qr = new QRCoder.QRCode(data);
+        using var bmp = qr.GetGraphic(8);
+        using var ms = new System.IO.MemoryStream();
+        bmp.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
+        ms.Position = 0;
+        var img = new System.Windows.Media.Imaging.BitmapImage();
+        img.BeginInit();
+        img.StreamSource = ms;
+        img.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+        img.EndInit();
+        img.Freeze();
+        return img;
+    }
+
+    private void P2pButton_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            if (_p2pGroup.IsActive)
+            {
+                _p2pGroup.Stop();
+                P2pButton.Content = "Создать Wi-Fi Direct группу";
+            }
+            else
+            {
+                _p2pGroup.Start();
+                P2pButton.Content = "Закрыть Wi-Fi Direct группу";
+            }
+        }
+        catch (Exception ex)
+        {
+            P2pInfo.Text = $"Не удалось: {ex.Message}";
+        }
+        finally
+        {
+            if (_p2pGroup.IsActive)
+                P2pInfo.Text = _p2pGroup.Status;
+            IssuePairToken();
+        }
+    }
+
+    private async void BtButton_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            if (_btServer is not null)
+            {
+                _btServer.Dispose();
+                _btServer = null;
+                BtButton.Content = "Принимать по Bluetooth";
+                BtInfo.Text = "Bluetooth не запущен.";
+                return;
+            }
+            _btServer = new BluetoothServer(_store, _pairing);
+            await _btServer.StartAsync();
+            BtButton.Content = "Остановить Bluetooth";
+            BtInfo.Text = _btServer.Status;
+        }
+        catch (Exception ex)
+        {
+            BtInfo.Text = $"Bluetooth не запустился: {ex.Message} " +
+                "Нужен включённый Bluetooth-адаптер (проверка на железе, T7).";
+            _btServer = null;
+            BtButton.Content = "Принимать по Bluetooth";
+        }
     }
 
     private void SearchBox_TextChanged(object sender, TextChangedEventArgs e) =>
@@ -240,15 +418,6 @@ public partial class MainWindow : Window
             RefreshList();
             SelectNote(note.Id);
         }
-    }
-
-    private void PairingButton_Click(object sender, RoutedEventArgs e)
-    {
-        var w = new PairingWindow(_store, _pairing, SyncPort)
-        {
-            Owner = this,
-        };
-        w.ShowDialog();
     }
 
     private void RefreshChecklist()
