@@ -40,6 +40,24 @@ public partial class MainWindow : Window
     }
 
     private bool _suppressSelection;
+    private List<SelectableNote> _managed = new();
+
+    private sealed class SelectableNote(Note note, bool selected) : System.ComponentModel.INotifyPropertyChanged
+    {
+        public Note Note { get; } = note;
+        private bool _selected = selected;
+        public bool IsSelected
+        {
+            get => _selected;
+            set
+            {
+                _selected = value;
+                PropertyChanged?.Invoke(this,
+                    new System.ComponentModel.PropertyChangedEventArgs(nameof(IsSelected)));
+            }
+        }
+        public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
+    }
 
     private void RefreshList()
     {
@@ -66,6 +84,83 @@ public partial class MainWindow : Window
         int conflicts = Conflicts.FindPairs(_store).Count;
         ConflictsButton.Content = $"Конфликты ({conflicts})";
         ConflictsButton.Visibility = conflicts > 0 ? Visibility.Visible : Visibility.Collapsed;
+        RefreshSettings();
+    }
+
+    private void RefreshSettings()
+    {
+        var notes = _store.List();
+        long filesBytes = 0;
+        int filesCount = 0;
+        try
+        {
+            foreach (var f in System.IO.Directory.GetFiles(_store.FilesDirectory))
+            {
+                filesCount++;
+                filesBytes += new System.IO.FileInfo(f).Length;
+            }
+        }
+        catch { }
+        long dbBytes = 0;
+        try { dbBytes = new System.IO.FileInfo(SqliteNoteStore.DefaultPath).Length; } catch { }
+        StorageInfo.Text = $"Заметок: {notes.Count}\n" +
+            $"Файлов: {filesCount} ({filesBytes / 1024} КБ)\n" +
+            $"База: {dbBytes / 1024} КБ\n" +
+            $"Путь: {SqliteNoteStore.DefaultPath}\n" +
+            $"Устройство: {_store.DeviceId[..Math.Min(8, _store.DeviceId.Length)]}…\n" +
+            $"Принимаю подключения: {SyncPort}";
+        TrustedBox.ItemsSource = _pairing.ListTrusted();
+        var selected = _managed.Where(s => s.IsSelected).Select(s => s.Note.Id).ToHashSet();
+        _managed = notes.Select(n => new SelectableNote(n, selected.Contains(n.Id))).ToList();
+        foreach (var s in _managed)
+            s.PropertyChanged += (_, _) => UpdateDeleteButton();
+        AllNotesBox.ItemsSource = _managed;
+        UpdateDeleteButton();
+    }
+
+    private void UpdateDeleteButton()
+    {
+        int count = _managed.Count(s => s.IsSelected);
+        DeleteSelectedButton.Content = count == 0
+            ? "Удалить выбранные"
+            : $"Удалить выбранные ({count})";
+    }
+
+    private void SelectAllBox_Changed(object sender, RoutedEventArgs e)
+    {
+        bool v = SelectAllBox.IsChecked == true;
+        foreach (var s in _managed)
+            s.IsSelected = v;
+        UpdateDeleteButton();
+    }
+
+    private void DeleteSelected_Click(object sender, RoutedEventArgs e)
+    {
+        var ids = _managed.Where(s => s.IsSelected).Select(s => s.Note.Id).ToList();
+        if (ids.Count == 0)
+        {
+            MessageBox.Show(this, "Ничего не выбрано.", "Удаление",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        var answer = MessageBox.Show(this,
+            $"Удалить заметок: {ids.Count}? Они пропадут и на другом устройстве при синхронизации.",
+            "Удаление", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+        if (answer != MessageBoxResult.Yes)
+            return;
+        foreach (var id in ids)
+            _store.Delete(id);
+        SelectAllBox.IsChecked = false;
+        RefreshList();
+    }
+
+    private void Untrust_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is System.Windows.Controls.Button btn && btn.Tag is string deviceId)
+        {
+            _pairing.Untrust(deviceId);
+            RefreshSettings();
+        }
     }
 
     private void ConflictsButton_Click(object sender, RoutedEventArgs e)
