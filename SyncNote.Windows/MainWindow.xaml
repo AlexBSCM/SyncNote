@@ -57,7 +57,12 @@
                         <ScrollViewer VerticalScrollBarVisibility="Auto">
                             <StackPanel x:Name="EditorPanel" Visibility="Collapsed">
                                 <TextBlock Text="Заголовок" Margin="0,0,0,4" />
-                                <TextBox x:Name="TitleBox" Margin="0,0,0,8" />
+                                <Grid Margin="0,0,0,8">
+                                    <TextBox x:Name="TitleBox" TextChanged="TitleBox_TextChanged" />
+                                    <TextBlock x:Name="TitleWatermark" Text="Заголовок"
+                                               Opacity="0.5" Margin="4,2,0,0" IsHitTestVisible="False"
+                                               Visibility="Collapsed" />
+                                </Grid>
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                                     <TextBlock Text="Текст" VerticalAlignment="Center" />
                                     <CheckBox x:Name="PreviewCheck" Content="Предпросмотр" Margin="12,0,0,0"

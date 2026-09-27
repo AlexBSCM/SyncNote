@@ -205,10 +205,16 @@ public partial class MainWindow : Window
 
     private void AddButton_Click(object sender, RoutedEventArgs e)
     {
-        var note = _store.Add("Новая заметка", string.Empty);
+        var note = _store.Add(string.Empty, string.Empty);
         RefreshList();
         NotesList.SelectedItem = _store.Search(SearchBox.Text).FirstOrDefault(n => n.Id == note.Id);
+        TitleBox.Focus();
+        TitleBox.SelectAll();
     }
+
+    private void TitleBox_TextChanged(object sender, TextChangedEventArgs e) =>
+        TitleWatermark.Visibility = string.IsNullOrEmpty(TitleBox.Text)
+            ? Visibility.Visible : Visibility.Collapsed;
 
     private void DeleteButton_Click(object sender, RoutedEventArgs e)
     {
