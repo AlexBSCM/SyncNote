@@ -13,6 +13,12 @@ import androidx.appcompat.app.AppCompatActivity
 // Экран синхронизации: ручной ввод узла/токена (петля, GO-адрес)
 // + поиск ПК по Wi-Fi Direct (нужно железо). Состояния как в protocol/.
 class SyncActivity : AppCompatActivity(), P2pConnector.Listener {
+    companion object {
+        const val ACTION_SYNC_NOW = "com.syncnote.action.SYNC_NOW"
+        const val EXTRA_HOST = "host"
+        const val EXTRA_PORT = "port"
+        const val EXTRA_TOKEN = "token"
+    }
     private lateinit var repo: NotesRepository
     private lateinit var p2p: P2pConnector
     private var peers: List<WifiP2pDevice> = emptyList()
@@ -50,6 +56,19 @@ class SyncActivity : AppCompatActivity(), P2pConnector.Listener {
             findViewById<EditText>(R.id.hostBox).setText(host)
             findViewById<EditText>(R.id.portBox).setText(port.toString())
             setState("Узел запомнен. Токен нужен только один раз.")
+        }
+        // Автотесты железа: am start -a com.syncnote.action.SYNC_NOW
+        // [--es host H --ei port P --es token T] — полный цикл без taps.
+        if (intent?.action == ACTION_SYNC_NOW) {
+            intent.getStringExtra(EXTRA_HOST)?.let {
+                findViewById<EditText>(R.id.hostBox).setText(it)
+            }
+            val p = intent.getIntExtra(EXTRA_PORT, 0)
+            if (p > 0) findViewById<EditText>(R.id.portBox).setText(p.toString())
+            intent.getStringExtra(EXTRA_TOKEN)?.let {
+                findViewById<EditText>(R.id.tokenBox).setText(it)
+            }
+            findViewById<Button>(R.id.syncButton).post { runSync() }
         }
         findViewById<ListView>(R.id.peersList)?.setOnItemClickListener { _, _, pos, _ ->
             p2p.connect(peers[pos])
@@ -101,6 +120,8 @@ class SyncActivity : AppCompatActivity(), P2pConnector.Listener {
                     android.os.Build.MODEL, token)
                 val r = session.run(repo)
                 SyncAuto.saveProfile(this@SyncActivity, host, port)
+                android.util.Log.i("SyncNote",
+                    "sync done pushed=${r.pushed} pulled=${r.pulled} conflicts=${r.conflicts}")
                 runOnUiThread {
                     // Токен одноразовый: устройство теперь доверенное.
                     findViewById<EditText>(R.id.tokenBox).text.clear()
@@ -108,8 +129,10 @@ class SyncActivity : AppCompatActivity(), P2pConnector.Listener {
                 setState("Готово: отправлено ${r.pushed}, получено ${r.pulled}, " +
                     "конфликтов ${r.conflicts}. Узел запомнен.")
             } catch (e: HelloRejectedException) {
+                android.util.Log.i("SyncNote", "sync rejected: ${e.message}")
                 setState("Ошибка: ${e.message}")
             } catch (e: Exception) {
+                android.util.Log.i("SyncNote", "sync error: ${e.message}")
                 setState("Ошибка: ${e.message}")
             }
         }.start()
