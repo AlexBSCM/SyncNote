@@ -73,6 +73,13 @@
                 android:text="Синхронизировать" />
         </LinearLayout>
 
+        <Button
+            android:id="@+id/btButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Подключиться по Bluetooth" />
+
         <ListView
             android:id="@+id/peersList"
             android:layout_width="match_parent"

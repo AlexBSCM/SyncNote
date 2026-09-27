@@ -14,6 +14,7 @@ public partial class PairingWindow : Window
     private readonly ISyncStore _store;
     private readonly PairingService _pairing;
     private readonly WifiDirectGroup _p2pGroup = new();
+    private BluetoothServer? _btServer;
     private SyncServer? _server;
     private CancellationTokenSource? _serverCts;
     private Task? _serverTask;
@@ -34,6 +35,7 @@ public partial class PairingWindow : Window
         {
             StopServer();
             _p2pGroup.Dispose();
+            _btServer?.Dispose();
         };
     }
 
@@ -88,6 +90,31 @@ public partial class PairingWindow : Window
         TokenInfo.Text = $"Код действует до {exp:HH:mm:ss} (5 минут, одноразовый).";
     }
 
+    private async void BtButton_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            if (_btServer is not null)
+            {
+                _btServer.Dispose();
+                _btServer = null;
+                BtButton.Content = "Принимать по Bluetooth";
+                BtInfo.Text = "Bluetooth не запущен.";
+                return;
+            }
+            _btServer = new BluetoothServer(_store, _pairing);
+            await _btServer.StartAsync();
+            BtButton.Content = "Остановить Bluetooth";
+            BtInfo.Text = _btServer.Status;
+        }
+        catch (Exception ex)
+        {
+            BtInfo.Text = $"Bluetooth не запустился: {ex.Message} " +
+                "Нужен включённый Bluetooth-адаптер (проверка на железе, T7).";
+            _btServer = null;
+            BtButton.Content = "Принимать по Bluetooth";
+        }
+    }
     private void P2pButton_Click(object sender, RoutedEventArgs e)
     {
         try

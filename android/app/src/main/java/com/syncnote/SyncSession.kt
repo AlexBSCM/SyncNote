@@ -22,8 +22,16 @@ class SyncSession(
 ) {
     fun run(store: SyncStore): SyncSessionResult {
         Socket(host, port).use { sock ->
-            val inp = DataInputStream(sock.getInputStream())
-            val out = DataOutputStream(sock.getOutputStream())
+            return runOverStreams(store,
+                DataInputStream(sock.getInputStream()),
+                DataOutputStream(sock.getOutputStream()))
+        }
+    }
+
+    fun runOverStreams(
+        store: SyncStore, inp: DataInputStream, out: DataOutputStream
+    ): SyncSessionResult {
+        run {
             var pushed = 0
             var pulled = 0
             var conflicts = 0

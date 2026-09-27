@@ -43,6 +43,7 @@ class SyncActivity : AppCompatActivity(), P2pConnector.Listener {
         findViewById<Button>(R.id.scanButton).setOnClickListener {
             qrLauncher.launch(Intent(this, QrScanActivity::class.java))
         }
+        findViewById<Button>(R.id.btButton).setOnClickListener { pickBluetoothDevice() }
         findViewById<ListView>(R.id.peersList)?.setOnItemClickListener { _, _, pos, _ ->
             p2p.connect(peers[pos])
         }
@@ -82,9 +83,45 @@ class SyncActivity : AppCompatActivity(), P2pConnector.Listener {
         }.start()
     }
 
+    private fun pickBluetoothDevice() {
+        val devices = BluetoothConnector.bonded(this)
+        if (devices.isEmpty()) {
+            setState("Нет спаренных устройств. Спарьте ПК в настройках Bluetooth.")
+            return
+        }
+        val names = devices.map { "${it.name} (${it.address})" }.toTypedArray()
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("ПК для синхронизации")
+            .setItems(names) { _, which -> runBtSync(devices[which]) }
+            .show()
+    }
+
+    private fun runBtSync(device: android.bluetooth.BluetoothDevice) {
+        val token = findViewById<EditText>(R.id.tokenBox).text.toString()
+            .trim().ifEmpty { null }
+        setState("Подключаемся по Bluetooth к ${device.name}…")
+        Thread {
+            try {
+                val (inp, out) = BluetoothConnector.connect(device)
+                inp.use {
+                    out.use {
+                        val session = SyncSession("bt", 0, repo.deviceId(),
+                            android.os.Build.MODEL, token)
+                        val r = session.runOverStreams(repo, inp, out)
+                        setState("Готово по Bluetooth: отправлено ${r.pushed}, " +
+                            "получено ${r.pulled}, конфликтов ${r.conflicts}.")
+                    }
+                }
+            } catch (e: HelloRejectedException) {
+                setState("Ошибка: ${e.message}")
+            } catch (e: Exception) {
+                setState("Ошибка Bluetooth: ${e.message}")
+            }
+        }.start()
+    }
+
     // P2pConnector.Listener
     override fun onState(text: String) = setState(text)
-
     override fun onPeers(devices: List<WifiP2pDevice>) {
         peers = devices
         runOnUiThread {
