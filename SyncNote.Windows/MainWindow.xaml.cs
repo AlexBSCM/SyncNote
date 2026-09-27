@@ -23,6 +23,16 @@ public partial class MainWindow : Window
         var reselected = notes.FirstOrDefault(n => n.Id == selectedId);
         if (reselected is not null)
             NotesList.SelectedItem = reselected;
+        int conflicts = Conflicts.FindPairs(_store).Count;
+        ConflictsButton.Content = $"Конфликты ({conflicts})";
+        ConflictsButton.Visibility = conflicts > 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void ConflictsButton_Click(object sender, RoutedEventArgs e)
+    {
+        var w = new ConflictWindow(_store) { Owner = this };
+        w.ShowDialog();
+        RefreshList();
     }
 
     private void SearchBox_TextChanged(object sender, TextChangedEventArgs e) =>

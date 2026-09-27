@@ -8,8 +8,12 @@
                 <TextBlock x:Name="ConnectionStatus" Text="Не подключено" />
             </StatusBarItem>
             <StatusBarItem HorizontalAlignment="Right">
-                <Button Content="Сопряжение…" Padding="8,0"
-                        Click="PairingButton_Click" />
+                <StackPanel Orientation="Horizontal">
+                    <Button x:Name="ConflictsButton" Content="Конфликты (0)" Padding="8,0"
+                            Visibility="Collapsed" Click="ConflictsButton_Click" />
+                    <Button Content="Сопряжение…" Padding="8,0" Margin="8,0,0,0"
+                            Click="PairingButton_Click" />
+                </StackPanel>
             </StatusBarItem>
         </StatusBar>
         <Grid>

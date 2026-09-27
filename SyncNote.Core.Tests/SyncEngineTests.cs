@@ -80,6 +80,29 @@ public sealed class SyncEngineTests
     }
 
     [TestMethod]
+    public void FindPairs_MatchesCopyWithOriginal()
+    {
+        var store = new InMemoryNoteStore();
+        var orig = store.Add("Документ", "v1");
+        store.Add("Другое", "x");
+        // Имитация копии от SyncEngine.
+        var copy = new SyncNoteDto
+        {
+            Id = Guid.NewGuid(),
+            Rev = 1,
+            Title = "Документ" + Conflicts.CopySuffix,
+            Body = "v2",
+            UpdatedAt = DateTime.UtcNow,
+        };
+        store.ImportFull(copy, _ => null);
+
+        var pairs = Conflicts.FindPairs(store);
+        Assert.AreEqual(1, pairs.Count);
+        Assert.AreEqual(orig.Id, pairs[0].Original.Id);
+        Assert.AreEqual("Документ" + Conflicts.CopySuffix, pairs[0].Copy.Title);
+    }
+
+    [TestMethod]
     public void Delete_Propagates_AsTombstone()
     {
         var (a, b) = TwoDevices();
