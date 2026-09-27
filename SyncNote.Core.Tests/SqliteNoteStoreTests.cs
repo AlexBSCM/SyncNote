@@ -168,6 +168,47 @@ public sealed class SqliteNoteStoreTests
     }
 
     [TestMethod]
+    public void Migrate_V3_to_V4_CreatesAttachments()
+    {
+        var path = TempDb();
+        using (var raw = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={path}"))
+        {
+            raw.Open();
+            using var cmd = raw.CreateCommand();
+            cmd.CommandText = """
+                CREATE TABLE keyvalue(key TEXT PRIMARY KEY, value TEXT NOT NULL);
+                INSERT INTO keyvalue(key, value) VALUES('schema_version', '3');
+                CREATE TABLE notes(
+                    id TEXT PRIMARY KEY, rev INTEGER NOT NULL,
+                    title TEXT NOT NULL, body TEXT NOT NULL,
+                    updated_at TEXT NOT NULL, author_device TEXT NOT NULL,
+                    is_deleted INTEGER NOT NULL DEFAULT 0,
+                    title_norm TEXT NOT NULL DEFAULT '', body_norm TEXT NOT NULL DEFAULT '');
+                CREATE TABLE checklist_items(
+                    id TEXT PRIMARY KEY, note_id TEXT NOT NULL REFERENCES notes(id),
+                    position INTEGER NOT NULL, text TEXT NOT NULL,
+                    is_checked INTEGER NOT NULL DEFAULT 0);
+                """;
+            cmd.ExecuteNonQuery();
+        }
+
+        using (var store = new SqliteNoteStore(path))
+        {
+            var note = store.Add("Влож", "тело");
+            var src = Path.Combine(Path.GetTempPath(), $"syncnote-v34-{Guid.NewGuid():N}.txt");
+            File.WriteAllText(src, "hello");
+            try
+            {
+                var att = store.AddAttachment(note.Id, src);
+                Assert.AreEqual(1, store.GetAttachments(note.Id).Count);
+                Assert.AreEqual("hello", File.ReadAllText(
+                    Path.Combine(store.FilesDirectory, att.StoredName)));
+            }
+            finally { File.Delete(src); }
+        }
+    }
+
+    [TestMethod]
     public void AddAttachment_OverLimit_ThrowsExplicitly()
     {
         using var store = new SqliteNoteStore(TempDb());
