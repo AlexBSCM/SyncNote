@@ -203,11 +203,15 @@ public partial class MainWindow : Window
         }
     }
 
+    private void SelectNote(Guid id) =>
+        NotesList.SelectedItem = NotesList.Items.OfType<Note>()
+            .FirstOrDefault(n => n.Id == id);
+
     private void AddButton_Click(object sender, RoutedEventArgs e)
     {
         var note = _store.Add(string.Empty, string.Empty);
         RefreshList();
-        NotesList.SelectedItem = _store.Search(SearchBox.Text).FirstOrDefault(n => n.Id == note.Id);
+        SelectNote(note.Id);
         TitleBox.Focus();
         TitleBox.SelectAll();
     }
@@ -234,8 +238,7 @@ public partial class MainWindow : Window
             note.Body = BodyBox.Text;
             _store.Update(note);
             RefreshList();
-            NotesList.SelectedItem = _store.Search(SearchBox.Text)
-                .FirstOrDefault(n => n.Id == note.Id);
+            SelectNote(note.Id);
         }
     }
 
