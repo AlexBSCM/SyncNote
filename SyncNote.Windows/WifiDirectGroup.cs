@@ -50,8 +50,6 @@ public sealed class WifiDirectGroup : IDisposable
             {
                 WiFiDirectAdvertisementPublisherStatus.Started =>
                     "Группа создана. Имя для поиска с телефона: " + Environment.MachineName,
-                WiFiDirectAdvertisementPublisherStatus.StartedWithoutResourceAllocation =>
-                    "Группа создана (ограниченно).",
                 WiFiDirectAdvertisementPublisherStatus.Aborted =>
                     $"Ошибка группы: {args.Error}. Проверьте адаптер (netsh wlan show drivers).",
                 _ => $"Статус группы: {args.Status}.",
@@ -66,8 +64,7 @@ public sealed class WifiDirectGroup : IDisposable
 
     public void Stop()
     {
-        _publisher?.Stop();
-        _publisher?.Dispose();
+        try { _publisher?.Stop(); } catch { }
         _publisher = null;
         Status = "Группа не создана.";
     }
