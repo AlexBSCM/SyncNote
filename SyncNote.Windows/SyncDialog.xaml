@@ -1,0 +1,23 @@
+<Window x:Class="SyncNote.Windows.SyncDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Синхронизация" Height="300" Width="380">
+    <StackPanel Margin="12">
+        <TextBlock Text="Узел" Margin="0,0,0,4" />
+        <TextBox x:Name="HostBox" Text="127.0.0.1" Margin="0,0,0,8" />
+        <TextBlock Text="Порт" Margin="0,0,0,4" />
+        <TextBox x:Name="PortBox" Margin="0,0,0,8" />
+        <TextBlock Text="Токен сопряжения (для первого подключения)" Margin="0,0,0,4" />
+        <TextBox x:Name="TokenBox" Margin="0,0,0,8" />
+        <TextBlock Text="Имя устройства" Margin="0,0,0,4" />
+        <TextBox x:Name="DeviceBox" Margin="0,0,0,12" />
+        <StackPanel Orientation="Horizontal">
+            <Button x:Name="GoButton" Content="Синхронизировать" Width="140"
+                    Click="GoButton_Click" />
+            <Button x:Name="CancelButton" Content="Отмена" Width="90" Margin="8,0,0,0"
+                    IsEnabled="False" Click="CancelButton_Click" />
+        </StackPanel>
+        <TextBlock x:Name="StateText" Text="Не подключено" Margin="0,12,0,0"
+                   TextWrapping="Wrap" />
+    </StackPanel>
+</Window>

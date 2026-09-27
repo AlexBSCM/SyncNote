@@ -35,6 +35,16 @@ public partial class MainWindow : Window
         RefreshList();
     }
 
+    private void SyncButton_Click(object sender, RoutedEventArgs e)
+    {
+        var w = new SyncDialog(
+            _store,
+            status => ConnectionStatus.Text = status,
+            RefreshList) { Owner = this };
+        w.ShowDialog();
+        RefreshList();
+    }
+
     private void SearchBox_TextChanged(object sender, TextChangedEventArgs e) =>
         RefreshList();
 

@@ -11,6 +11,8 @@
                 <StackPanel Orientation="Horizontal">
                     <Button x:Name="ConflictsButton" Content="Конфликты (0)" Padding="8,0"
                             Visibility="Collapsed" Click="ConflictsButton_Click" />
+                    <Button Content="Синхронизировать…" Padding="8,0" Margin="8,0,0,0"
+                            Click="SyncButton_Click" />
                     <Button Content="Сопряжение…" Padding="8,0" Margin="8,0,0,0"
                             Click="PairingButton_Click" />
                 </StackPanel>
