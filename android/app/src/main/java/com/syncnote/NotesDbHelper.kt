@@ -7,7 +7,7 @@ import android.database.sqlite.SQLiteOpenHelper
 // Локальное хранилище (зеркало схемы Core v5: notes + norms, checklist,
 // attachments, syncstate, keyvalue). Файлы — в filesDir.
 class NotesDbHelper(ctx: Context) :
-    SQLiteOpenHelper(ctx, "notes.db", null, 5) {
+    SQLiteOpenHelper(ctx, "notes.db", null, 6) {
 
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL("CREATE TABLE keyvalue(key TEXT PRIMARY KEY, value TEXT NOT NULL)");
@@ -33,8 +33,34 @@ class NotesDbHelper(ctx: Context) :
     }
 
     override fun onUpgrade(db: SQLiteDatabase, old: Int, current: Int) {
-        // Этап 1: база только создаётся (v5). Миграции — по мере роста схемы.
-        onCreate(db)
+        if (old < 6) {
+            // v5 -> v6: канонические id без дефисов. Дубли (dashed + N-форма
+            // одной заметки) сливаем, одиночные dashed конвертируем.
+            db.beginTransaction()
+            try {
+                db.execSQL("""UPDATE checklist_items SET note_id = REPLACE(note_id, '-', '')
+                    WHERE note_id LIKE '%-%'""")
+                db.execSQL("""UPDATE attachments SET note_id = REPLACE(note_id, '-', '')
+                    WHERE note_id LIKE '%-%'""")
+                db.execSQL("""DELETE FROM syncstate WHERE note_id LIKE '%-%' AND
+                    REPLACE(note_id, '-', '') IN
+                    (SELECT note_id FROM syncstate WHERE note_id NOT LIKE '%-%')""")
+                db.execSQL("""UPDATE syncstate SET note_id = REPLACE(note_id, '-', '')
+                    WHERE note_id LIKE '%-%'""")
+                // Дубли checklist/attachments после слияния: чистим точные повторы.
+                db.execSQL("""DELETE FROM checklist_items WHERE rowid NOT IN (
+                    SELECT MIN(rowid) FROM checklist_items
+                    GROUP BY note_id, position, text, is_checked)""")
+                db.execSQL("""DELETE FROM attachments WHERE rowid NOT IN (
+                    SELECT MIN(rowid) FROM attachments GROUP BY note_id, sha256)""")
+                db.execSQL("""DELETE FROM notes WHERE id LIKE '%-%' AND
+                    REPLACE(id, '-', '') IN (SELECT id FROM notes WHERE id NOT LIKE '%-%')""")
+                db.execSQL("UPDATE notes SET id = REPLACE(id, '-', '') WHERE id LIKE '%-%'")
+                db.setTransactionSuccessful()
+            } finally {
+                db.endTransaction()
+            }
+        }
     }
 
     private fun ensureDeviceId(db: SQLiteDatabase) {

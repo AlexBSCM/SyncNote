@@ -209,6 +209,9 @@ class SyncSession(
     }
 
     private fun dtoFromJson(o: JSONObject): SyncNoteDto {
+        // Каноническая форма id — без дефисов: иначе одна и та же заметка
+        // с ПК (dashes) и с телефона дублируется.
+        fun nid(s: String) = s.replace("-", "")
         val check = mutableListOf<ChecklistItemDto>()
         val ca = o.optJSONArray("Checklist") ?: JSONArray()
         for (i in 0 until ca.length()) {
@@ -224,7 +227,7 @@ class SyncSession(
                 mimeType = a.getString("MimeType"),
                 sizeBytes = a.getLong("SizeBytes"), sha256 = a.getString("Sha256"))
         }
-        return SyncNoteDto(id = o.getString("Id"), rev = o.getLong("Rev"),
+        return SyncNoteDto(id = nid(o.getString("Id")), rev = o.getLong("Rev"),
             baseRev = o.getLong("BaseRev"), title = o.getString("Title"),
             body = o.getString("Body"), updatedAt = o.getLong("UpdatedAt"),
             author = o.getString("Author"), isDeleted = o.getBoolean("IsDeleted"),

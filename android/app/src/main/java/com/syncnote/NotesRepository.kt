@@ -12,6 +12,25 @@ class NotesRepository(ctx: Context) : SyncStore {
     override fun filesDir(): File = filesRoot
     override fun deviceId(): String = db.deviceId()
 
+    init {
+        sweepOrphanFiles()
+    }
+
+    // Удаляем файлы без метаданных (обрывы, дубли после слияния id).
+    private fun sweepOrphanFiles() {
+        try {
+            val known = mutableSetOf<String>()
+            db.readableDatabase.rawQuery("SELECT stored_name FROM attachments", null).use { c ->
+                while (c.moveToNext()) known += c.getString(0)
+            }
+            filesRoot.listFiles()?.forEach { f ->
+                if (f.isFile && f.name !in known && !f.name.endsWith(".tmp")) {
+                    try { f.delete() } catch (_: Exception) { }
+                }
+            }
+        } catch (_: Exception) { }
+    }
+
     fun list(): List<Note> = query(null)
 
     fun search(q: String): List<Note> =
