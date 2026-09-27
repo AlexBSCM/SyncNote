@@ -52,6 +52,9 @@ class SyncActivity : AppCompatActivity(), P2pConnector.Listener {
             qrLauncher.launch(Intent(this, QrScanActivity::class.java))
         }
         findViewById<Button>(R.id.btButton).setOnClickListener { pickBluetoothDevice() }
+        findViewById<ListView>(R.id.peersList)?.setOnItemClickListener { _, _, pos, _ ->
+            p2p.connect(peers[pos])
+        }
         SyncAuto.profile(this)?.let { (host, port) ->
             findViewById<EditText>(R.id.hostBox).setText(host)
             findViewById<EditText>(R.id.portBox).setText(port.toString())
@@ -79,10 +82,6 @@ class SyncActivity : AppCompatActivity(), P2pConnector.Listener {
             findViewById<EditText>(R.id.tokenBox).setText(it)
         }
         findViewById<Button>(R.id.syncButton).post { runSync() }
-    }
-        findViewById<ListView>(R.id.peersList)?.setOnItemClickListener { _, _, pos, _ ->
-            p2p.connect(peers[pos])
-        }
     }
 
     override fun onDestroy() {
