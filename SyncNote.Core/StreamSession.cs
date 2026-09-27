@@ -95,7 +95,12 @@ public static class StreamSession
             ServerLog.Line("session ok");
         }
         catch (IOException ex) { ServerLog.Line($"session io: {ex.GetType().Name}"); }
-        catch (OperationCanceledException) { ServerLog.Line("session cancelled"); }
+        catch (OperationCanceledException)
+        {
+            var stack = string.Join(" <- ", new System.Diagnostics.StackTrace()
+                .GetFrames().Take(6).Select(f => f.GetMethod()?.Name));
+            ServerLog.Line($"session cancelled: {stack}");
+        }
         catch (Exception ex) { ServerLog.Line($"session fail: {ex.GetType().Name}"); }
     }
 
