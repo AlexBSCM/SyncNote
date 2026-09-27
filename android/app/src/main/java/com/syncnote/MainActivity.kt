@@ -44,7 +44,7 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, ConflictsActivity::class.java))
         }
         findViewById<android.widget.Button>(R.id.addButton).setOnClickListener {
-            val n = repo.add("Новая заметка", "")
+            val n = repo.add("", "")
             startActivity(Intent(this, EditorActivity::class.java)
                 .putExtra(EditorActivity.EXTRA_NOTE_ID, n.id))
         }
