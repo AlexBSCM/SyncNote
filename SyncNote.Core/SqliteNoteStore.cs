@@ -5,9 +5,9 @@ namespace SyncNote.Core;
 // SQLite-хранилище (WAL + транзакции на запись). Схема v1:
 // notes(id, rev, title, body, updated_at, author_device, is_deleted),
 // keyvalue(key, value) — schema_version и device_id.
-public sealed class SqliteNoteStore : INoteStore, IDisposable
+public sealed class SqliteNoteStore : ISyncStore, IDisposable
 {
-    private const int SchemaVersion = 4;
+    private const int SchemaVersion = 5;
     private readonly SqliteConnection _db;
     private readonly string _deviceId;
     private readonly string _filesDir;
@@ -147,6 +147,18 @@ public sealed class SqliteNoteStore : INoteStore, IDisposable
                 """;
             cmd.ExecuteNonQuery();
             SetValue(cmd, "schema_version", "4");
+            version = 4;
+        }
+        if (version == 4)
+        {
+            // v4 -> v5: состояние синхронизации (последняя общая ревизия).
+            cmd.CommandText = """
+                CREATE TABLE IF NOT EXISTS syncstate(
+                    note_id TEXT PRIMARY KEY,
+                    sync_rev INTEGER NOT NULL DEFAULT 0);
+                """;
+            cmd.ExecuteNonQuery();
+            SetValue(cmd, "schema_version", "5");
         }
         tx.Commit();
     }
@@ -463,6 +475,176 @@ public sealed class SqliteNoteStore : INoteStore, IDisposable
         cmd.Parameters.AddWithValue("$u", DateTime.UtcNow.ToString("o"));
         cmd.Parameters.AddWithValue("$id", noteId.ToString("N"));
         cmd.ExecuteNonQuery();
+    }
+
+    public Note? TryGet(Guid id)
+    {
+        using var cmd = _db.CreateCommand();
+        cmd.CommandText = "SELECT id, rev, title, body, updated_at, author_device, is_deleted " +
+            "FROM notes WHERE id = $id;";
+        cmd.Parameters.AddWithValue("$id", id.ToString("N"));
+        using var reader = cmd.ExecuteReader();
+        if (!reader.Read())
+            return null;
+        return new Note
+        {
+            Id = Guid.Parse(reader.GetString(0)),
+            Rev = reader.GetInt64(1),
+            Title = reader.GetString(2),
+            Body = reader.GetString(3),
+            UpdatedAt = DateTime.Parse(reader.GetString(4),
+                null, System.Globalization.DateTimeStyles.RoundtripKind),
+            AuthorDeviceId = reader.GetString(5),
+            IsDeleted = reader.GetInt64(6) != 0,
+        };
+    }
+
+    public long GetSyncRev(Guid noteId)
+    {
+        using var cmd = _db.CreateCommand();
+        cmd.CommandText = "SELECT sync_rev FROM syncstate WHERE note_id = $n;";
+        cmd.Parameters.AddWithValue("$n", noteId.ToString("N"));
+        var raw = cmd.ExecuteScalar();
+        return raw is long rev ? rev : 0;
+    }
+
+    public void SetSyncRev(Guid noteId, long rev)
+    {
+        using var cmd = _db.CreateCommand();
+        cmd.CommandText = "INSERT INTO syncstate(note_id, sync_rev) VALUES($n, $r) " +
+            "ON CONFLICT(note_id) DO UPDATE SET sync_rev = excluded.sync_rev;";
+        cmd.Parameters.AddWithValue("$n", noteId.ToString("N"));
+        cmd.Parameters.AddWithValue("$r", rev);
+        cmd.ExecuteNonQuery();
+    }
+
+    public IReadOnlyList<SyncNoteDto> Export()
+    {
+        using var cmd = _db.CreateCommand();
+        cmd.CommandText = "SELECT id FROM notes;";
+        var ids = new List<Guid>();
+        using (var reader = cmd.ExecuteReader())
+            while (reader.Read())
+                ids.Add(Guid.Parse(reader.GetString(0)));
+        var result = new List<SyncNoteDto>();
+        foreach (var id in ids)
+        {
+            var note = TryGet(id);
+            if (note is null)
+                continue;
+            result.Add(new SyncNoteDto
+            {
+                Id = note.Id,
+                Rev = note.Rev,
+                BaseRev = GetSyncRev(id),
+                Title = note.Title,
+                Body = note.Body,
+                UpdatedAt = note.UpdatedAt,
+                Author = note.AuthorDeviceId,
+                IsDeleted = note.IsDeleted,
+                Checklist = GetChecklist(id).Select(i => new ChecklistItemDto
+                {
+                    Position = i.Position,
+                    Text = i.Text,
+                    IsChecked = i.IsChecked,
+                }).ToList(),
+                Attachments = GetAttachments(id).Select(a => new AttachmentMetaDto
+                {
+                    FileName = a.FileName,
+                    MimeType = a.MimeType,
+                    SizeBytes = a.SizeBytes,
+                    Sha256 = a.Sha256,
+                }).ToList(),
+            });
+        }
+        return result;
+    }
+
+    public Attachment ImportAttachment(Guid noteId, string fileName, string mime, byte[] content)
+    {
+        var tmp = Path.Combine(Path.GetTempPath(), $"syncnote-imp-{Guid.NewGuid():N}.bin");
+        try
+        {
+            File.WriteAllBytes(tmp, content);
+            var att = AddAttachment(noteId, tmp);
+            att.FileName = fileName;
+            att.MimeType = mime;
+            using var cmd = _db.CreateCommand();
+            cmd.CommandText = "UPDATE attachments SET file_name = $f, mime = $m WHERE id = $id;";
+            cmd.Parameters.AddWithValue("$f", fileName);
+            cmd.Parameters.AddWithValue("$m", mime);
+            cmd.Parameters.AddWithValue("$id", att.Id.ToString("N"));
+            cmd.ExecuteNonQuery();
+            return att;
+        }
+        finally
+        {
+            try { File.Delete(tmp); } catch { }
+        }
+    }
+
+    public void ImportFull(SyncNoteDto dto, Func<string, byte[]?> fileBytes)
+    {
+        using var tx = _db.BeginTransaction();
+        using var cmd = _db.CreateCommand();
+        cmd.Transaction = (SqliteTransaction)tx;
+        cmd.CommandText = "INSERT INTO notes(id, rev, title, body, updated_at, author_device, is_deleted, title_norm, body_norm) " +
+            "VALUES($id, $r, $t, $b, $u, $a, $del, $tn, $bn) " +
+            "ON CONFLICT(id) DO UPDATE SET rev = excluded.rev, title = excluded.title, " +
+            "body = excluded.body, updated_at = excluded.updated_at, " +
+            "author_device = excluded.author_device, is_deleted = excluded.is_deleted, " +
+            "title_norm = excluded.title_norm, body_norm = excluded.body_norm;";
+        cmd.Parameters.AddWithValue("$id", dto.Id.ToString("N"));
+        cmd.Parameters.AddWithValue("$r", dto.Rev);
+        cmd.Parameters.AddWithValue("$t", dto.Title);
+        cmd.Parameters.AddWithValue("$b", dto.Body);
+        cmd.Parameters.AddWithValue("$u", dto.UpdatedAt.ToString("o"));
+        cmd.Parameters.AddWithValue("$a", dto.Author);
+        cmd.Parameters.AddWithValue("$del", dto.IsDeleted ? 1 : 0);
+        cmd.Parameters.AddWithValue("$tn", Norm(dto.Title));
+        cmd.Parameters.AddWithValue("$bn", Norm(dto.Body));
+        cmd.ExecuteNonQuery();
+        cmd.CommandText = "DELETE FROM checklist_items WHERE note_id = $n;";
+        cmd.Parameters.Clear();
+        cmd.Parameters.AddWithValue("$n", dto.Id.ToString("N"));
+        cmd.ExecuteNonQuery();
+        foreach (var item in dto.Checklist.OrderBy(c => c.Position))
+        {
+            cmd.CommandText = "INSERT INTO checklist_items(id, note_id, position, text, is_checked) " +
+                "VALUES($id, $n, $p, $t, $c);";
+            cmd.Parameters.Clear();
+            cmd.Parameters.AddWithValue("$id", Guid.NewGuid().ToString("N"));
+            cmd.Parameters.AddWithValue("$n", dto.Id.ToString("N"));
+            cmd.Parameters.AddWithValue("$p", item.Position);
+            cmd.Parameters.AddWithValue("$t", item.Text);
+            cmd.Parameters.AddWithValue("$c", item.IsChecked ? 1 : 0);
+            cmd.ExecuteNonQuery();
+        }
+        tx.Commit();
+
+        var want = dto.Attachments.Select(a => a.Sha256).ToHashSet();
+        foreach (var old in GetAttachments(dto.Id))
+            if (!want.Contains(old.Sha256))
+                DeleteAttachment(old.Id);
+        var have = GetAttachments(dto.Id).Select(a => a.Sha256).ToHashSet();
+        foreach (var meta in dto.Attachments)
+        {
+            if (have.Contains(meta.Sha256))
+                continue;
+            var bytes = fileBytes(meta.Sha256)
+                ?? throw new InvalidOperationException(
+                    $"Нет байтов файла {meta.FileName} (sha256 {meta.Sha256}).");
+            ImportAttachment(dto.Id, meta.FileName, meta.MimeType, bytes);
+        }
+
+        // Нейтрализуем bump ревизий от TouchNote: ревизия — из DTO.
+        using var fix = _db.CreateCommand();
+        fix.CommandText = "UPDATE notes SET rev = $r, author_device = $a, updated_at = $u WHERE id = $id;";
+        fix.Parameters.AddWithValue("$r", dto.Rev);
+        fix.Parameters.AddWithValue("$a", dto.Author);
+        fix.Parameters.AddWithValue("$u", dto.UpdatedAt.ToString("o"));
+        fix.Parameters.AddWithValue("$id", dto.Id.ToString("N"));
+        fix.ExecuteNonQuery();
     }
 
     public void Dispose()
