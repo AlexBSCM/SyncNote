@@ -14,6 +14,11 @@
                     Margin="8,0,0,0" Click="StartStopButton_Click" />
         </StackPanel>
         <TextBlock x:Name="ServerInfo" TextWrapping="Wrap" Margin="0,0,0,8" />
+        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+            <Button x:Name="P2pButton" Content="Создать Wi-Fi Direct группу" Width="220"
+                    Click="P2pButton_Click" />
+        </StackPanel>
+        <TextBlock x:Name="P2pInfo" TextWrapping="Wrap" Opacity="0.7" Margin="0,0,0,8" />
         <TextBlock Text="Доверенные устройства:" FontWeight="Bold" Margin="0,0,0,4" />
         <ListBox x:Name="TrustedList" MaxHeight="140">
             <ListBox.ItemTemplate>

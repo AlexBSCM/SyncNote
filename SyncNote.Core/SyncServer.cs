@@ -14,7 +14,9 @@ public sealed class SyncServer : IAsyncDisposable, IDisposable
     {
         _store = store;
         _pairing = pairing;
-        _listener = new TcpListener(IPAddress.Loopback, port);
+        // Any: доступен и с петли, и с Wi-Fi Direct GO-адреса.
+        // Требуется токен/доверие; брандмауэр Windows спросит разрешение.
+        _listener = new TcpListener(IPAddress.Any, port);
         _listener.Start();
     }
 

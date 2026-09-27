@@ -13,6 +13,7 @@ public partial class PairingWindow : Window
 {
     private readonly ISyncStore _store;
     private readonly PairingService _pairing;
+    private readonly WifiDirectGroup _p2pGroup = new();
     private SyncServer? _server;
     private CancellationTokenSource? _serverCts;
     private Task? _serverTask;
@@ -22,13 +23,18 @@ public partial class PairingWindow : Window
         InitializeComponent();
         _store = store;
         _pairing = PairingService.Open(dbPath);
+        P2pInfo.Text = _p2pGroup.Status;
         Loaded += (_, _) =>
         {
             StartServer();
             IssueNewToken();
             RefreshTrusted();
         };
-        Closed += (_, _) => StopServer();
+        Closed += (_, _) =>
+        {
+            StopServer();
+            _p2pGroup.Dispose();
+        };
     }
 
     private void StartServer()
@@ -74,11 +80,38 @@ public partial class PairingWindow : Window
             v = 1,
             host = "127.0.0.1",
             port = _server?.Port ?? 0,
+            p2pName = Environment.MachineName,
             token,
             exp = ((DateTimeOffset)exp).ToUnixTimeSeconds(),
         });
         QrImage.Source = RenderQr(json);
         TokenInfo.Text = $"Код действует до {exp:HH:mm:ss} (5 минут, одноразовый).";
+    }
+
+    private void P2pButton_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            if (_p2pGroup.IsActive)
+            {
+                _p2pGroup.Stop();
+                P2pButton.Content = "Создать Wi-Fi Direct группу";
+            }
+            else
+            {
+                _p2pGroup.Start();
+                P2pButton.Content = "Закрыть Wi-Fi Direct группу";
+            }
+        }
+        catch (Exception ex)
+        {
+            P2pInfo.Text = $"Не удалось: {ex.Message}";
+        }
+        finally
+        {
+            P2pInfo.Text = _p2pGroup.Status;
+            IssueNewToken();
+        }
     }
 
     private static BitmapImage RenderQr(string text)
