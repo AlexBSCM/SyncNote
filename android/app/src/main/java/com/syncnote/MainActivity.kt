@@ -18,7 +18,7 @@ import java.util.Date
 class MainActivity : AppCompatActivity() {
     private lateinit var repo: NotesRepository
     private lateinit var adapter: NotesAdapter
-    private val pollHandler = android.os.Handler(mainLooper)
+    private val pollHandler = android.os.Handler(android.os.Looper.getMainLooper())
     private val poller = object : Runnable {
         override fun run() {
             SyncAuto.trigger(this@MainActivity, quiet = true)
