@@ -117,6 +117,34 @@ public partial class MainWindow : Window
         }
     }
 
+    private void BodyBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (PreviewCheck.IsChecked == true)
+            RenderPreview();
+    }
+
+    private void PreviewCheck_Toggled(object sender, RoutedEventArgs e)
+    {
+        bool preview = PreviewCheck.IsChecked == true;
+        BodyBox.Visibility = preview ? Visibility.Collapsed : Visibility.Visible;
+        PreviewScroll.Visibility = preview ? Visibility.Visible : Visibility.Collapsed;
+        if (preview)
+            RenderPreview();
+    }
+
+    private void RenderPreview()
+    {
+        PreviewBlock.Inlines.Clear();
+        foreach (var seg in TextMarkup.Parse(BodyBox.Text))
+        {
+            PreviewBlock.Inlines.Add(new System.Windows.Documents.Run(seg.Text)
+            {
+                FontWeight = seg.Bold ? FontWeights.Bold : FontWeights.Normal,
+                FontStyle = seg.Italic ? FontStyles.Italic : FontStyles.Normal,
+            });
+        }
+    }
+
     private void RefreshAttachments()
     {
         if (NotesList.SelectedItem is Note note)

@@ -45,9 +45,20 @@
                 <StackPanel x:Name="EditorPanel" Visibility="Collapsed">
                     <TextBlock Text="Заголовок" Margin="0,0,0,4" />
                     <TextBox x:Name="TitleBox" Margin="0,0,0,8" />
-                    <TextBlock Text="Текст" Margin="0,0,0,4" />
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                        <TextBlock Text="Текст" VerticalAlignment="Center" />
+                        <CheckBox x:Name="PreviewCheck" Content="Предпросмотр" Margin="12,0,0,0"
+                                  VerticalAlignment="Center"
+                                  Checked="PreviewCheck_Toggled"
+                                  Unchecked="PreviewCheck_Toggled" />
+                    </StackPanel>
                     <TextBox x:Name="BodyBox" AcceptsReturn="True" TextWrapping="Wrap"
-                             VerticalScrollBarVisibility="Auto" Height="200" />
+                             VerticalScrollBarVisibility="Auto" Height="200"
+                             TextChanged="BodyBox_TextChanged" />
+                    <ScrollViewer x:Name="PreviewScroll" MaxHeight="200"
+                                  Visibility="Collapsed" Margin="0,4,0,0">
+                        <TextBlock x:Name="PreviewBlock" TextWrapping="Wrap" />
+                    </ScrollViewer>
                     <TextBlock Text="Чек-лист" Margin="0,8,0,4" />
                     <ListBox x:Name="ChecklistBox" MaxHeight="140">
                         <ListBox.ItemTemplate>
