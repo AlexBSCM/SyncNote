@@ -1,5 +1,6 @@
 package com.syncnote
 
+import android.content.Intent
 import android.net.wifi.p2p.WifiP2pDevice
 import android.os.Bundle
 import android.widget.ArrayAdapter
@@ -16,6 +17,19 @@ class SyncActivity : AppCompatActivity(), P2pConnector.Listener {
     private lateinit var p2p: P2pConnector
     private var peers: List<WifiP2pDevice> = emptyList()
 
+    private val qrLauncher = registerForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()) { res ->
+        if (res.resultCode == RESULT_OK && res.data != null) {
+            findViewById<EditText>(R.id.hostBox).setText(
+                res.data!!.getStringExtra(QrScanActivity.EXTRA_HOST))
+            findViewById<EditText>(R.id.portBox).setText(
+                res.data!!.getIntExtra(QrScanActivity.EXTRA_PORT, 0).toString())
+            findViewById<EditText>(R.id.tokenBox).setText(
+                res.data!!.getStringExtra(QrScanActivity.EXTRA_TOKEN))
+            setState("QR принят. Нажмите «Синхронизировать».")
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_sync)
@@ -26,6 +40,9 @@ class SyncActivity : AppCompatActivity(), P2pConnector.Listener {
 
         findViewById<Button>(R.id.findButton).setOnClickListener { p2p.discover() }
         findViewById<Button>(R.id.syncButton).setOnClickListener { runSync() }
+        findViewById<Button>(R.id.scanButton).setOnClickListener {
+            qrLauncher.launch(Intent(this, QrScanActivity::class.java))
+        }
         findViewById<ListView>(R.id.peersList)?.setOnItemClickListener { _, _, pos, _ ->
             p2p.connect(peers[pos])
         }
