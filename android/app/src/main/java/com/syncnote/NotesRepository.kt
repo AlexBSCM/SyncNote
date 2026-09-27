@@ -7,7 +7,8 @@ import java.io.File
 // CRUD + поиск (регистронезависимо, через norm-колонки).
 class NotesRepository(ctx: Context) : SyncStore {
     private val db = NotesDbHelper(ctx)
-    private val filesRoot: File = File(ctx.filesDir, "files").apply { mkdirs() }
+    // Раньше ошибочно использовался подкаталог files/files — чиним с переездом.
+    private val filesRoot: File = ctx.filesDir.also { migrateFilesDir(it) }
     override fun filesDir(): File = filesRoot
     override fun deviceId(): String = db.deviceId()
 
@@ -281,5 +282,17 @@ class NotesRepository(ctx: Context) : SyncStore {
     private fun sha256hex(bytes: ByteArray): String {
         val md = java.security.MessageDigest.getInstance("SHA-256")
         return md.digest(bytes).joinToString("") { "%02x".format(it) }
+    }
+
+    companion object {
+        private fun migrateFilesDir(filesDir: File) {
+            val nested = File(filesDir, "files")
+            if (!nested.isDirectory) return
+            nested.listFiles()?.forEach { f ->
+                val dest = File(filesDir, f.name)
+                if (!dest.exists()) f.renameTo(dest) else f.delete()
+            }
+            try { nested.delete() } catch (_: Exception) { }
+        }
     }
 }
