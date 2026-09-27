@@ -30,16 +30,24 @@ public partial class MainWindow : Window
             _store.Dispose();
         };
         RefreshList();
+        // Подтягиваем изменения с телефона без нажатий: тихое обновление списка.
+        var timer = new System.Windows.Threading.DispatcherTimer
+        {
+            Interval = TimeSpan.FromSeconds(2),
+        };
+        timer.Tick += (_, _) => RefreshList();
+        timer.Start();
     }
 
     private void RefreshList()
     {
+        // Выбор не трогаем, чтобы таймер не затирал набираемый текст:
+        // редактор обновляется только явным выбором/созданием/сохранением.
         var selectedId = (NotesList.SelectedItem as Note)?.Id;
         var notes = _store.Search(SearchBox.Text);
         NotesList.ItemsSource = notes;
-        var reselected = notes.FirstOrDefault(n => n.Id == selectedId);
-        if (reselected is not null)
-            NotesList.SelectedItem = reselected;
+        if (selectedId is not null && notes.All(n => n.Id != selectedId))
+            NotesList.SelectedItem = null; // удалена с другой стороны
         int conflicts = Conflicts.FindPairs(_store).Count;
         ConflictsButton.Content = $"Конфликты ({conflicts})";
         ConflictsButton.Visibility = conflicts > 0 ? Visibility.Visible : Visibility.Collapsed;
@@ -95,6 +103,7 @@ public partial class MainWindow : Window
         if (NotesList.SelectedItem is Note note)
         {
             _store.Delete(note.Id);
+            NotesList.SelectedItem = null;
             RefreshList();
         }
     }
@@ -107,6 +116,8 @@ public partial class MainWindow : Window
             note.Body = BodyBox.Text;
             _store.Update(note);
             RefreshList();
+            NotesList.SelectedItem = _store.Search(SearchBox.Text)
+                .FirstOrDefault(n => n.Id == note.Id);
         }
     }
 
