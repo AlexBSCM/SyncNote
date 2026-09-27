@@ -18,6 +18,7 @@ public sealed class SyncServer : IAsyncDisposable, IDisposable
         // Требуется токен/доверие; брандмауэр Windows спросит разрешение.
         _listener = new TcpListener(IPAddress.Any, port);
         _listener.Start();
+        ServerLog.Line($"server start port={Port} build=20260927-errmsg");
     }
 
     public int Port => ((IPEndPoint)_listener.LocalEndpoint).Port;
