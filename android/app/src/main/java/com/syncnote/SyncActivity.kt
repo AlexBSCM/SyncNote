@@ -40,7 +40,7 @@ class SyncActivity : AppCompatActivity(), P2pConnector.Listener {
         p2p.listener = this
         p2p.start()
 
-        findViewById<Button>(R.id.findButton).setOnClickListener { p2p.discover() }
+        findViewById<Button>(R.id.findButton).setOnClickListener { ensureP2pPermissionAndDiscover() }
         findViewById<Button>(R.id.syncButton).setOnClickListener { runSync() }
         findViewById<Button>(R.id.scanButton).setOnClickListener {
             qrLauncher.launch(Intent(this, QrScanActivity::class.java))
@@ -63,6 +63,26 @@ class SyncActivity : AppCompatActivity(), P2pConnector.Listener {
 
     private fun setState(t: String) = runOnUiThread {
         findViewById<TextView>(R.id.stateText).text = t
+    }
+
+    private val p2pPermissionLauncher = registerForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions()
+    ) { grants ->
+        if (grants.values.all { it }) p2p.discover()
+        else setState("Без разрешений поиск невозможен. Включите Wi-Fi и геолокацию.")
+    }
+
+    private fun ensureP2pPermissionAndDiscover() {
+        val perms = if (android.os.Build.VERSION.SDK_INT >= 33)
+            arrayOf(android.Manifest.permission.NEARBY_WIFI_DEVICES)
+        else
+            arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION)
+        val missing = perms.filter {
+            androidx.core.content.ContextCompat.checkSelfPermission(this, it) !=
+                android.content.pm.PackageManager.PERMISSION_GRANTED
+        }
+        if (missing.isEmpty()) p2p.discover()
+        else p2pPermissionLauncher.launch(missing.toTypedArray())
     }
 
     private fun runSync() {
