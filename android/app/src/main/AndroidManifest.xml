@@ -20,6 +20,7 @@
     <application
         android:allowBackup="true"
         android:label="SyncNote"
+        android:theme="@style/Theme.SyncNote"
         android:supportsRtl="true">
         <activity
             android:name=".ConflictsActivity"
