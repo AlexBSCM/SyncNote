@@ -34,6 +34,8 @@ public sealed class SqliteNoteStore : ISyncStore, IDisposable
 
     public string FilesDirectory => _filesDir;
 
+    public string DeviceId => _deviceId;
+
     public static string DefaultPath =>
         Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -60,7 +62,7 @@ public sealed class SqliteNoteStore : ISyncStore, IDisposable
         var version = versionText is not null && int.TryParse(versionText, out var v) ? v : 0;
         if (version == 0)
         {
-            // Свежая установка: полная схема v4 сразу.
+            // Свежая установка: полная схема v5 сразу.
             cmd.CommandText = """
                 ALTER TABLE notes ADD COLUMN title_norm TEXT NOT NULL DEFAULT '';
                 ALTER TABLE notes ADD COLUMN body_norm TEXT NOT NULL DEFAULT '';
@@ -82,9 +84,12 @@ public sealed class SqliteNoteStore : ISyncStore, IDisposable
                     stored_name TEXT NOT NULL);
                 CREATE INDEX IF NOT EXISTS idx_attachments_note
                     ON attachments(note_id);
+                CREATE TABLE IF NOT EXISTS syncstate(
+                    note_id TEXT PRIMARY KEY,
+                    sync_rev INTEGER NOT NULL DEFAULT 0);
                 """;
             cmd.ExecuteNonQuery();
-            SetValue(cmd, "schema_version", "4");
+            SetValue(cmd, "schema_version", "5");
         }
         else if (version == 1)
         {

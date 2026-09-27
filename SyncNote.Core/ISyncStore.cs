@@ -9,4 +9,5 @@ public interface ISyncStore : INoteStore
     IReadOnlyList<SyncNoteDto> Export();
     Attachment ImportAttachment(Guid noteId, string fileName, string mime, byte[] content);
     void ImportFull(SyncNoteDto dto, Func<string, byte[]?> fileBytes);
+    string DeviceId { get; }
 }

@@ -12,6 +12,8 @@ public sealed class InMemoryNoteStore : ISyncStore
     public string FilesDirectory { get; } =
         Path.Combine(Path.GetTempPath(), "SyncNoteMemFiles");
 
+    public string DeviceId { get; } = Guid.NewGuid().ToString("N");
+
     public IReadOnlyList<Note> List() =>
         _notes.Where(n => !n.IsDeleted).OrderByDescending(n => n.UpdatedAt).ToList();
 
