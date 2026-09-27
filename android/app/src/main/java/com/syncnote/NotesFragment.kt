@@ -59,7 +59,7 @@ class NotesFragment : Fragment() {
         refresh()
         // Подтягиваем правки с ПК при возврате в список + опрос, пока открыты.
         SyncAuto.trigger(requireContext())
-        pollHandler.postDelayed(poller, 5000)
+        pollHandler.postDelayed(poller, 2000)
     }
 
     override fun onPause() {
@@ -73,7 +73,7 @@ class NotesFragment : Fragment() {
             context?.let {
                 SyncAuto.trigger(it, quiet = true)
                 refresh()
-                pollHandler.postDelayed(this, 5000)
+                pollHandler.postDelayed(this, 2000)
             }
         }
     }
