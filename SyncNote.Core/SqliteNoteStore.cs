@@ -7,7 +7,7 @@ namespace SyncNote.Core;
 // keyvalue(key, value) — schema_version и device_id.
 public sealed class SqliteNoteStore : INoteStore, IDisposable
 {
-    private const int SchemaVersion = 2;
+    private const int SchemaVersion = 3;
     private readonly SqliteConnection _db;
     private readonly string _deviceId;
     private bool _disposed;
@@ -54,13 +54,21 @@ public sealed class SqliteNoteStore : INoteStore, IDisposable
         var version = versionText is not null && int.TryParse(versionText, out var v) ? v : 0;
         if (version == 0)
         {
-            // Свежая установка: полная схема v2 сразу.
+            // Свежая установка: полная схема v3 сразу.
             cmd.CommandText = """
                 ALTER TABLE notes ADD COLUMN title_norm TEXT NOT NULL DEFAULT '';
                 ALTER TABLE notes ADD COLUMN body_norm TEXT NOT NULL DEFAULT '';
+                CREATE TABLE IF NOT EXISTS checklist_items(
+                    id TEXT PRIMARY KEY,
+                    note_id TEXT NOT NULL REFERENCES notes(id),
+                    position INTEGER NOT NULL,
+                    text TEXT NOT NULL,
+                    is_checked INTEGER NOT NULL DEFAULT 0);
+                CREATE INDEX IF NOT EXISTS idx_checklist_note
+                    ON checklist_items(note_id, position);
                 """;
             cmd.ExecuteNonQuery();
-            SetValue(cmd, "schema_version", "2");
+            SetValue(cmd, "schema_version", "3");
         }
         else if (version == 1)
         {
@@ -87,6 +95,23 @@ public sealed class SqliteNoteStore : INoteStore, IDisposable
                 cmd.ExecuteNonQuery();
             }
             SetValue(cmd, "schema_version", "2");
+            version = 2;
+        }
+        if (version == 2)
+        {
+            // v2 -> v3: пункты чек-листа.
+            cmd.CommandText = """
+                CREATE TABLE IF NOT EXISTS checklist_items(
+                    id TEXT PRIMARY KEY,
+                    note_id TEXT NOT NULL REFERENCES notes(id),
+                    position INTEGER NOT NULL,
+                    text TEXT NOT NULL,
+                    is_checked INTEGER NOT NULL DEFAULT 0);
+                CREATE INDEX IF NOT EXISTS idx_checklist_note
+                    ON checklist_items(note_id, position);
+                """;
+            cmd.ExecuteNonQuery();
+            SetValue(cmd, "schema_version", "3");
         }
         tx.Commit();
     }
@@ -228,6 +253,102 @@ public sealed class SqliteNoteStore : INoteStore, IDisposable
         var rows = cmd.ExecuteNonQuery();
         tx.Commit();
         return rows > 0;
+    }
+
+    public IReadOnlyList<ChecklistItem> GetChecklist(Guid noteId)
+    {
+        using var cmd = _db.CreateCommand();
+        cmd.CommandText = "SELECT id, note_id, position, text, is_checked " +
+            "FROM checklist_items WHERE note_id = $n ORDER BY position;";
+        cmd.Parameters.AddWithValue("$n", noteId.ToString("N"));
+        var result = new List<ChecklistItem>();
+        using var reader = cmd.ExecuteReader();
+        while (reader.Read())
+        {
+            result.Add(new ChecklistItem
+            {
+                Id = Guid.Parse(reader.GetString(0)),
+                NoteId = Guid.Parse(reader.GetString(1)),
+                Position = reader.GetInt32(2),
+                Text = reader.GetString(3),
+                IsChecked = reader.GetInt64(4) != 0,
+            });
+        }
+        return result;
+    }
+
+    public ChecklistItem AddChecklistItem(Guid noteId, string text)
+    {
+        using var tx = _db.BeginTransaction();
+        using var cmd = _db.CreateCommand();
+        cmd.Transaction = (SqliteTransaction)tx;
+        cmd.CommandText = "SELECT COALESCE(MAX(position), -1) + 1 FROM checklist_items WHERE note_id = $n;";
+        cmd.Parameters.AddWithValue("$n", noteId.ToString("N"));
+        var position = Convert.ToInt32(cmd.ExecuteScalar());
+        var item = new ChecklistItem { NoteId = noteId, Position = position, Text = text };
+        cmd.CommandText = "INSERT INTO checklist_items(id, note_id, position, text, is_checked) " +
+            "VALUES($id, $n, $p, $t, 0);";
+        cmd.Parameters.Clear();
+        cmd.Parameters.AddWithValue("$id", item.Id.ToString("N"));
+        cmd.Parameters.AddWithValue("$n", noteId.ToString("N"));
+        cmd.Parameters.AddWithValue("$p", position);
+        cmd.Parameters.AddWithValue("$t", text);
+        cmd.ExecuteNonQuery();
+        tx.Commit();
+        TouchNote(cmd, noteId);
+        return item;
+    }
+
+    public void UpdateChecklistItem(ChecklistItem item)
+    {
+        using var tx = _db.BeginTransaction();
+        using var cmd = _db.CreateCommand();
+        cmd.Transaction = (SqliteTransaction)tx;
+        cmd.CommandText = "UPDATE checklist_items SET position = $p, text = $t, is_checked = $c " +
+            "WHERE id = $id;";
+        cmd.Parameters.AddWithValue("$p", item.Position);
+        cmd.Parameters.AddWithValue("$t", item.Text);
+        cmd.Parameters.AddWithValue("$c", item.IsChecked ? 1 : 0);
+        cmd.Parameters.AddWithValue("$id", item.Id.ToString("N"));
+        var rows = cmd.ExecuteNonQuery();
+        tx.Commit();
+        if (rows == 0)
+            throw new KeyNotFoundException($"Checklist item {item.Id} not found.");
+        TouchNote(cmd, item.NoteId);
+    }
+
+    public bool DeleteChecklistItem(Guid itemId)
+    {
+        Guid noteId = Guid.Empty;
+        using (var cmd = _db.CreateCommand())
+        {
+            cmd.CommandText = "SELECT note_id FROM checklist_items WHERE id = $id;";
+            cmd.Parameters.AddWithValue("$id", itemId.ToString("N"));
+            var raw = cmd.ExecuteScalar() as string;
+            if (raw is null)
+                return false;
+            noteId = Guid.Parse(raw);
+        }
+        using var tx = _db.BeginTransaction();
+        using var del = _db.CreateCommand();
+        del.Transaction = (SqliteTransaction)tx;
+        del.CommandText = "DELETE FROM checklist_items WHERE id = $id;";
+        del.Parameters.AddWithValue("$id", itemId.ToString("N"));
+        del.ExecuteNonQuery();
+        tx.Commit();
+        TouchNote(del, noteId);
+        return true;
+    }
+
+    // Любое изменение чек-листа — новая ревизия заметки (нужно для синхронизации).
+    private void TouchNote(SqliteCommand cmd, Guid noteId)
+    {
+        cmd.Transaction = null;
+        cmd.CommandText = "UPDATE notes SET rev = rev + 1, updated_at = $u WHERE id = $id;";
+        cmd.Parameters.Clear();
+        cmd.Parameters.AddWithValue("$u", DateTime.UtcNow.ToString("o"));
+        cmd.Parameters.AddWithValue("$id", noteId.ToString("N"));
+        cmd.ExecuteNonQuery();
     }
 
     public void Dispose()

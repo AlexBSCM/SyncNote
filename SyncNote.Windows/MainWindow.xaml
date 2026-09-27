@@ -47,7 +47,31 @@
                     <TextBox x:Name="TitleBox" Margin="0,0,0,8" />
                     <TextBlock Text="Текст" Margin="0,0,0,4" />
                     <TextBox x:Name="BodyBox" AcceptsReturn="True" TextWrapping="Wrap"
-                             VerticalScrollBarVisibility="Auto" Height="300" />
+                             VerticalScrollBarVisibility="Auto" Height="200" />
+                    <TextBlock Text="Чек-лист" Margin="0,8,0,4" />
+                    <ListBox x:Name="ChecklistBox" MaxHeight="140">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal" Margin="0,2">
+                                    <CheckBox IsChecked="{Binding IsChecked}"
+                                              Tag="{Binding Id}"
+                                              Checked="ChecklistItem_Toggled"
+                                              Unchecked="ChecklistItem_Toggled"
+                                              VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding Text}" Margin="6,0"
+                                               VerticalAlignment="Center" MaxWidth="320"
+                                               TextTrimming="CharacterEllipsis" />
+                                    <Button Content="×" Tag="{Binding Id}" Width="24"
+                                            Click="DeleteChecklistItem_Click" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                    <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                        <TextBox x:Name="NewItemBox" Width="280" />
+                        <Button Content="В список" Margin="8,0,0,0"
+                                Click="AddChecklistItem_Click" />
+                    </StackPanel>
                     <Button x:Name="SaveButton" Content="Сохранить" Width="100"
                             Margin="0,8,0,0" HorizontalAlignment="Left"
                             Click="SaveButton_Click" />

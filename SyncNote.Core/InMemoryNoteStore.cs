@@ -5,6 +5,7 @@ namespace SyncNote.Core;
 public sealed class InMemoryNoteStore : INoteStore
 {
     private readonly List<Note> _notes = new();
+    private readonly List<ChecklistItem> _items = new();
 
     public IReadOnlyList<Note> List() =>
         _notes.OrderByDescending(n => n.UpdatedAt).ToList();
@@ -43,6 +44,39 @@ public sealed class InMemoryNoteStore : INoteStore
         if (existing is null)
             return false;
         _notes.Remove(existing);
+        return true;
+    }
+
+    public IReadOnlyList<ChecklistItem> GetChecklist(Guid noteId) =>
+        _items.Where(i => i.NoteId == noteId).OrderBy(i => i.Position).ToList();
+
+    public ChecklistItem AddChecklistItem(Guid noteId, string text)
+    {
+        var item = new ChecklistItem
+        {
+            NoteId = noteId,
+            Position = _items.Where(i => i.NoteId == noteId).Count(),
+            Text = text,
+        };
+        _items.Add(item);
+        return item;
+    }
+
+    public void UpdateChecklistItem(ChecklistItem item)
+    {
+        var existing = _items.FirstOrDefault(i => i.Id == item.Id)
+            ?? throw new KeyNotFoundException($"Checklist item {item.Id} not found.");
+        existing.Text = item.Text;
+        existing.IsChecked = item.IsChecked;
+        existing.Position = item.Position;
+    }
+
+    public bool DeleteChecklistItem(Guid itemId)
+    {
+        var existing = _items.FirstOrDefault(i => i.Id == itemId);
+        if (existing is null)
+            return false;
+        _items.Remove(existing);
         return true;
     }
 }

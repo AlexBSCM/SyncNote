@@ -97,4 +97,32 @@ public sealed class SqliteNoteStoreTests
         Assert.ThrowsException<KeyNotFoundException>(
             () => store.Update(new Note { Title = "x", Body = "y" }));
     }
+
+    [TestMethod]
+    public void Checklist_Add_Update_Delete_BumpsNoteRev()
+    {
+        using var store = new SqliteNoteStore(TempDb());
+        var note = store.Add("С чек-листом", "тело");
+        var rev0 = store.List()[0].Rev;
+
+        var a = store.AddChecklistItem(note.Id, "первый");
+        var b = store.AddChecklistItem(note.Id, "второй");
+        Assert.AreEqual(0, a.Position);
+        Assert.AreEqual(1, b.Position);
+
+        var items = store.GetChecklist(note.Id);
+        Assert.AreEqual(2, items.Count);
+        Assert.AreEqual("первый", items[0].Text);
+        Assert.IsFalse(items[0].IsChecked);
+
+        b.IsChecked = true;
+        store.UpdateChecklistItem(b);
+        Assert.IsTrue(store.GetChecklist(note.Id)[1].IsChecked);
+
+        Assert.IsTrue(store.DeleteChecklistItem(a.Id));
+        Assert.AreEqual(1, store.GetChecklist(note.Id).Count);
+        Assert.IsFalse(store.DeleteChecklistItem(Guid.NewGuid()));
+
+        Assert.IsTrue(store.List()[0].Rev > rev0);
+    }
 }

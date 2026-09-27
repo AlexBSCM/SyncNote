@@ -36,6 +36,7 @@ public partial class MainWindow : Window
             EditorPanel.Visibility = Visibility.Visible;
             TitleBox.Text = note.Title;
             BodyBox.Text = note.Body;
+            RefreshChecklist();
         }
         else
         {
@@ -67,6 +68,50 @@ public partial class MainWindow : Window
             note.Title = TitleBox.Text;
             note.Body = BodyBox.Text;
             _store.Update(note);
+            RefreshList();
+        }
+    }
+
+    private void RefreshChecklist()
+    {
+        if (NotesList.SelectedItem is Note note)
+            ChecklistBox.ItemsSource = _store.GetChecklist(note.Id);
+        else
+            ChecklistBox.ItemsSource = null;
+    }
+
+    private void AddChecklistItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (NotesList.SelectedItem is Note note && !string.IsNullOrWhiteSpace(NewItemBox.Text))
+        {
+            _store.AddChecklistItem(note.Id, NewItemBox.Text.Trim());
+            NewItemBox.Clear();
+            RefreshChecklist();
+            RefreshList();
+        }
+    }
+
+    private void ChecklistItem_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (sender is CheckBox box && box.Tag is Guid itemId
+            && NotesList.SelectedItem is Note note)
+        {
+            var item = _store.GetChecklist(note.Id).FirstOrDefault(i => i.Id == itemId);
+            if (item is not null)
+            {
+                item.IsChecked = box.IsChecked == true;
+                _store.UpdateChecklistItem(item);
+                RefreshList();
+            }
+        }
+    }
+
+    private void DeleteChecklistItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is System.Windows.Controls.Button btn && btn.Tag is Guid itemId)
+        {
+            _store.DeleteChecklistItem(itemId);
+            RefreshChecklist();
             RefreshList();
         }
     }
