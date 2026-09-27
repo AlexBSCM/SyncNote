@@ -28,6 +28,7 @@ class QrScanActivity : AppCompatActivity() {
         const val EXTRA_HOST = "host"
         const val EXTRA_PORT = "port"
         const val EXTRA_TOKEN = "token"
+        const val EXTRA_HOSTS = "hosts"
         private const val REQ_CAMERA = 41
     }
 
@@ -104,10 +105,16 @@ class QrScanActivity : AppCompatActivity() {
                 return
             }
             done = true
+            val hosts = ArrayList<String>()
+            val arr = o.optJSONArray("hosts")
+            if (arr != null) {
+                for (i in 0 until arr.length()) hosts += arr.optString(i)
+            }
             setResult(Activity.RESULT_OK, Intent()
                 .putExtra(EXTRA_HOST, host)
                 .putExtra(EXTRA_PORT, port)
-                .putExtra(EXTRA_TOKEN, token))
+                .putExtra(EXTRA_TOKEN, token)
+                .putStringArrayListExtra(EXTRA_HOSTS, hosts))
             finish()
         } catch (_: Exception) {
             hint("Не QR сопряжения SyncNote.")

@@ -32,11 +32,15 @@ class SyncActivity : AppCompatActivity(), P2pConnector.Listener {
             findViewById<EditText>(R.id.portBox).setText(port.toString())
             findViewById<EditText>(R.id.tokenBox).setText(
                 res.data!!.getStringExtra(QrScanActivity.EXTRA_TOKEN))
+            pendingHosts = res.data!!.getStringArrayListExtra(QrScanActivity.EXTRA_HOSTS)
+                ?.filter { it.isNotBlank() } ?: listOf(host)
             if (host.isNotBlank() && port > 0)
                 SyncAuto.saveProfile(this, host, port)
             setState("QR принят. Нажмите «Синхронизировать».")
         }
     }
+
+    private var pendingHosts: List<String> = emptyList()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -127,7 +131,8 @@ class SyncActivity : AppCompatActivity(), P2pConnector.Listener {
             try {
                 val session = SyncSession(host, port, repo.deviceId(),
                     android.os.Build.MODEL, token)
-                val r = session.run(repo, cacheDir)
+                val hosts = (pendingHosts + host).distinct().filter { it.isNotBlank() }
+                val r = session.tryHosts(repo, cacheDir, hosts)
                 android.util.Log.i("SyncNote",
                     "sync done pushed=${r.pushed} pulled=${r.pulled} conflicts=${r.conflicts}")
                 SyncAuto.saveProfile(this@SyncActivity, host, port)

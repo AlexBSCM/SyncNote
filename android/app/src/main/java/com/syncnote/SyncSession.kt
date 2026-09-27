@@ -21,12 +21,29 @@ class SyncSession(
     private val token: String?
 ) {
     fun run(store: SyncStore, tmpDir: File? = null): SyncSessionResult {
-        Socket(host, port).use { sock ->
-            val def = tmpDir ?: File(System.getProperty("java.io.tmpdir") ?: "/data/local/tmp")
-            return runOverStreams(store,
-                DataInputStream(sock.getInputStream()),
-                DataOutputStream(sock.getOutputStream()), def)
+        return tryHosts(store, tmpDir, listOf(host))
+    }
+
+    // Перебор узлов из QR (первый доступный). Таймаут соединения 8 секунд —
+    // вместо вечного зависания сразу понятная ошибка.
+    fun tryHosts(store: SyncStore, tmpDir: File? = null, hosts: List<String>): SyncSessionResult {
+        var last: Exception? = null
+        for (h in hosts) {
+            try {
+                Socket().use { sock ->
+                    sock.connect(java.net.InetSocketAddress(h, port), 8000)
+                    val def = tmpDir ?: File(System.getProperty("java.io.tmpdir") ?: "/data/local/tmp")
+                    return runOverStreams(store,
+                        DataInputStream(sock.getInputStream()),
+                        DataOutputStream(sock.getOutputStream()), def)
+                }
+            } catch (e: HelloRejectedException) {
+                throw e
+            } catch (e: Exception) {
+                last = e
+            }
         }
+        throw last ?: java.io.IOException("Нет доступных узлов.")
     }
 
     fun runOverStreams(

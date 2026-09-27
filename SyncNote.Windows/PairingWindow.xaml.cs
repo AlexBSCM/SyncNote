@@ -42,10 +42,12 @@ public partial class PairingWindow : Window
     private void IssueNewToken()
     {
         var (token, exp) = _pairing.IssueToken();
+        var hosts = GetLanIPv4s();
         var json = JsonSerializer.Serialize(new
         {
             v = 1,
-            host = GetLanIPv4(),
+            host = hosts.Count > 0 ? hosts[0] : "127.0.0.1",
+            hosts,
             port = _port,
             p2pName = Environment.MachineName,
             token,
@@ -55,40 +57,32 @@ public partial class PairingWindow : Window
         TokenInfo.Text = $"Код действует до {exp:HH:mm:ss} (5 минут, одноразовый).";
     }
 
-    // Первый рабочий IPv4 (для телефона по LAN / Wi-Fi Direct).
-    // Петля 127.0.0.1 доступна только через adb reverse — вручную.
-    private static string GetLanIPv4()
+    // Кандидаты IPv4: сначала интерфейсы со шлюзом (настоящий LAN),
+    // затем остальные. Петля 127.0.0.1 — только через adb reverse, вручную.
+    private static List<string> GetLanIPv4s()
     {
+        var withGateway = new List<string>();
+        var others = new List<string>();
         try
         {
             foreach (var ni in System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces())
             {
                 if (ni.OperationalStatus != System.Net.NetworkInformation.OperationalStatus.Up)
                     continue;
+                bool hasGateway = ni.GetIPProperties().GatewayAddresses.Count > 0;
                 foreach (var addr in ni.GetIPProperties().UnicastAddresses)
                 {
                     var ip = addr.Address;
-                    if (ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork
-                        && !System.Net.IPAddress.IsLoopback(ip)
-                        && ip.ToString().StartsWith("192.168."))
-                        return ip.ToString();
-                }
-            }
-            foreach (var ni in System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces())
-            {
-                if (ni.OperationalStatus != System.Net.NetworkInformation.OperationalStatus.Up)
-                    continue;
-                foreach (var addr in ni.GetIPProperties().UnicastAddresses)
-                {
-                    var ip = addr.Address;
-                    if (ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork
-                        && !System.Net.IPAddress.IsLoopback(ip))
-                        return ip.ToString();
+                    if (ip.AddressFamily != System.Net.Sockets.AddressFamily.InterNetwork
+                        || System.Net.IPAddress.IsLoopback(ip))
+                        continue;
+                    (hasGateway ? withGateway : others).Add(ip.ToString());
                 }
             }
         }
         catch { }
-        return "127.0.0.1";
+        var result = withGateway.Concat(others).Distinct().ToList();
+        return result.Count > 0 ? result : new List<string> { "127.0.0.1" };
     }
 
     private async void BtButton_Click(object sender, RoutedEventArgs e)
