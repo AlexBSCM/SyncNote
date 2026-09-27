@@ -41,9 +41,11 @@ public static class StreamSession
             }
             if (!ok || string.IsNullOrEmpty(deviceId))
             {
+                ServerLog.Line("hello rejected");
                 await SendErr(stream, "нет доверия: нужен токен сопряжения", ct);
                 return;
             }
+            ServerLog.Line($"hello ok device={deviceId[..Math.Min(8, deviceId.Length)]}");
             await Frame.WriteAsync(stream, new JsonObject
             {
                 ["t"] = "hello_ok",
@@ -68,6 +70,7 @@ public static class StreamSession
                     var (result, conflict) = store.Apply(dto,
                         sha => pending.TryGetValue(sha, out var f) ? f.Bytes : null);
                     pending.Clear();
+                    ServerLog.Line($"applied rev={dto.Rev} -> {result}");
                     var ack = new JsonObject
                     {
                         ["t"] = "applied",
@@ -89,9 +92,11 @@ public static class StreamSession
                 await Frame.ReadAsync(stream, ct); // applied
             }
             await Frame.WriteAsync(stream, new JsonObject { ["t"] = "sync_end" }, ct);
+            ServerLog.Line("session ok");
         }
-        catch (IOException) { }
-        catch (OperationCanceledException) { }
+        catch (IOException ex) { ServerLog.Line($"session io: {ex.GetType().Name}"); }
+        catch (OperationCanceledException) { ServerLog.Line("session cancelled"); }
+        catch (Exception ex) { ServerLog.Line($"session fail: {ex.GetType().Name}"); }
     }
 
     public static async Task<SyncSessionResult> ClientSideAsync(

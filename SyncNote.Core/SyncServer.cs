@@ -39,7 +39,11 @@ public sealed class SyncServer : IAsyncDisposable, IDisposable
     {
         using (client)
         using (var stream = client.GetStream())
+        {
+            ServerLog.Line("conn open");
             await StreamSession.ServerSideAsync(_store, _pairing, stream, ct);
+            ServerLog.Line("conn close");
+        }
     }
 
     public void Dispose() => _listener.Stop();
