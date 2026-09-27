@@ -207,6 +207,7 @@ public static class StreamSession
                 throw new IOException($"Нет локального файла {meta.FileName}.");
             var bytes = await File.ReadAllBytesAsync(
                 Path.Combine(store.FilesDirectory, att.StoredName), ct);
+            ServerLog.Line($"send file bytes={bytes.Length}");
             await Frame.WriteAsync(stream, new JsonObject
             {
                 ["t"] = "file_begin",

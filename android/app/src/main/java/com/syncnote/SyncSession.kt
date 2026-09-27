@@ -65,6 +65,7 @@ class SyncSession(
                         bufferChunk(msg, pending, tmpDir)
                     "note_upsert" -> {
                         val dto = dtoFromJson(msg.getJSONObject("note"))
+                        android.util.Log.i("SyncNote", "pull note rev=${dto.rev} files=${dto.attachments.size}")
                         val (result, _) = SyncEngine.apply(store, dto) { sha ->
                             pending[sha]?.file?.readBytes()
                         }
