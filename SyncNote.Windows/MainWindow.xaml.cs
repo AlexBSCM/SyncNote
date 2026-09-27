@@ -37,6 +37,7 @@ public partial class MainWindow : Window
             TitleBox.Text = note.Title;
             BodyBox.Text = note.Body;
             RefreshChecklist();
+            RefreshAttachments();
         }
         else
         {
@@ -112,6 +113,69 @@ public partial class MainWindow : Window
         {
             _store.DeleteChecklistItem(itemId);
             RefreshChecklist();
+            RefreshList();
+        }
+    }
+
+    private void RefreshAttachments()
+    {
+        if (NotesList.SelectedItem is Note note)
+            AttachmentsBox.ItemsSource = _store.GetAttachments(note.Id);
+        else
+            AttachmentsBox.ItemsSource = null;
+    }
+
+    private void AddAttachment_Click(object sender, RoutedEventArgs e)
+    {
+        if (NotesList.SelectedItem is not Note note)
+            return;
+        var dlg = new Microsoft.Win32.OpenFileDialog();
+        if (dlg.ShowDialog() != true)
+            return;
+        try
+        {
+            _store.AddAttachment(note.Id, dlg.FileName);
+            RefreshAttachments();
+            RefreshList();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "Не удалось добавить вложение",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private void OpenAttachment_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is System.Windows.Controls.Button btn && btn.Tag is Guid attId
+            && NotesList.SelectedItem is Note note)
+        {
+            var att = _store.GetAttachments(note.Id).FirstOrDefault(a => a.Id == attId);
+            if (att is null)
+                return;
+            var path = System.IO.Path.Combine(_store.FilesDirectory, att.StoredName);
+            try
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = path,
+                    UseShellExecute = true,
+                });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, ex.Message, "Не удалось открыть вложение",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+    }
+
+    private void DeleteAttachment_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is System.Windows.Controls.Button btn && btn.Tag is Guid attId)
+        {
+            _store.DeleteAttachment(attId);
+            RefreshAttachments();
             RefreshList();
         }
     }

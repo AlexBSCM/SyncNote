@@ -72,6 +72,27 @@
                         <Button Content="В список" Margin="8,0,0,0"
                                 Click="AddChecklistItem_Click" />
                     </StackPanel>
+                    <TextBlock Text="Вложения" Margin="0,8,0,4" />
+                    <ListBox x:Name="AttachmentsBox" MaxHeight="100">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal" Margin="0,2">
+                                    <TextBlock Text="{Binding FileName}" MaxWidth="200"
+                                               VerticalAlignment="Center"
+                                               TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Text="{Binding SizeBytes, StringFormat='{}{0} байт'}"
+                                               Opacity="0.6" FontSize="11" Margin="6,0"
+                                               VerticalAlignment="Center" />
+                                    <Button Content="Открыть" Tag="{Binding Id}" Width="60"
+                                            Click="OpenAttachment_Click" />
+                                    <Button Content="×" Tag="{Binding Id}" Width="24" Margin="4,0,0,0"
+                                            Click="DeleteAttachment_Click" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                    <Button Content="Добавить файл…" Width="120" Margin="0,4,0,0"
+                            HorizontalAlignment="Left" Click="AddAttachment_Click" />
                     <Button x:Name="SaveButton" Content="Сохранить" Width="100"
                             Margin="0,8,0,0" HorizontalAlignment="Left"
                             Click="SaveButton_Click" />

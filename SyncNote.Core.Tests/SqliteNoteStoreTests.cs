@@ -125,4 +125,62 @@ public sealed class SqliteNoteStoreTests
 
         Assert.IsTrue(store.List()[0].Rev > rev0);
     }
+
+    [TestMethod]
+    public void Attachments_Roundtrip_Delete_AndLimits()
+    {
+        using var store = new SqliteNoteStore(TempDb());
+        var note = store.Add("С файлом", "тело");
+
+        var src = Path.Combine(Path.GetTempPath(), $"syncnote-src-{Guid.NewGuid():N}.bin");
+        var payload = new byte[256];
+        new Random(42).NextBytes(payload);
+        File.WriteAllBytes(src, payload);
+
+        var att = store.AddAttachment(note.Id, src);
+        Assert.AreEqual(Path.GetFileName(src), att.FileName);
+        Assert.AreEqual(256, att.SizeBytes);
+        Assert.AreEqual(64, att.Sha256.Length);
+
+        var stored = Path.Combine(store.FilesDirectory, att.StoredName);
+        Assert.IsTrue(File.Exists(stored));
+        CollectionAssert.AreEqual(payload, File.ReadAllBytes(stored));
+
+        var list = store.GetAttachments(note.Id);
+        Assert.AreEqual(1, list.Count);
+        Assert.AreEqual(att.Id, list[0].Id);
+
+        Assert.IsTrue(store.DeleteAttachment(att.Id));
+        Assert.IsFalse(File.Exists(stored));
+        Assert.AreEqual(0, store.GetAttachments(note.Id).Count);
+        Assert.IsFalse(store.DeleteAttachment(Guid.NewGuid()));
+
+        File.Delete(src);
+    }
+
+    [TestMethod]
+    public void AddAttachment_MissingFile_Throws()
+    {
+        using var store = new SqliteNoteStore(TempDb());
+        var note = store.Add("Без файла", "тело");
+        Assert.ThrowsException<FileNotFoundException>(
+            () => store.AddAttachment(note.Id, Path.Combine(Path.GetTempPath(), "syncnote-nope.bin")));
+    }
+
+    [TestMethod]
+    public void AddAttachment_OverLimit_ThrowsExplicitly()
+    {
+        using var store = new SqliteNoteStore(TempDb());
+        var note = store.Add("Большой", "тело");
+        var big = Path.Combine(Path.GetTempPath(), $"syncnote-big-{Guid.NewGuid():N}.bin");
+        using (var fs = File.Create(big))
+            fs.SetLength(AttachmentIo.MaxAttachmentBytes + 1);
+        try
+        {
+            Assert.ThrowsException<AttachmentTooLargeException>(
+                () => store.AddAttachment(note.Id, big));
+            Assert.AreEqual(0, store.GetAttachments(note.Id).Count);
+        }
+        finally { File.Delete(big); }
+    }
 }

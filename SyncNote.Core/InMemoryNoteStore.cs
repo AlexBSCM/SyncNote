@@ -6,6 +6,10 @@ public sealed class InMemoryNoteStore : INoteStore
 {
     private readonly List<Note> _notes = new();
     private readonly List<ChecklistItem> _items = new();
+    private readonly List<Attachment> _attachments = new();
+
+    public string FilesDirectory { get; } =
+        Path.Combine(Path.GetTempPath(), "SyncNoteMemFiles");
 
     public IReadOnlyList<Note> List() =>
         _notes.OrderByDescending(n => n.UpdatedAt).ToList();
@@ -77,6 +81,32 @@ public sealed class InMemoryNoteStore : INoteStore
         if (existing is null)
             return false;
         _items.Remove(existing);
+        return true;
+    }
+
+    public IReadOnlyList<Attachment> GetAttachments(Guid noteId) =>
+        _attachments.Where(a => a.NoteId == noteId).ToList();
+
+    public Attachment AddAttachment(Guid noteId, string sourcePath)
+    {
+        var att = new Attachment { NoteId = noteId };
+        var (storedName, size, sha) = AttachmentIo.CopyIn(FilesDirectory, att.Id, sourcePath);
+        att.FileName = Path.GetFileName(sourcePath);
+        att.MimeType = AttachmentIo.MimeByExtension(att.FileName);
+        att.SizeBytes = size;
+        att.Sha256 = sha;
+        att.StoredName = storedName;
+        _attachments.Add(att);
+        return att;
+    }
+
+    public bool DeleteAttachment(Guid attachmentId)
+    {
+        var existing = _attachments.FirstOrDefault(a => a.Id == attachmentId);
+        if (existing is null)
+            return false;
+        _attachments.Remove(existing);
+        try { File.Delete(Path.Combine(FilesDirectory, existing.StoredName)); } catch { }
         return true;
     }
 }

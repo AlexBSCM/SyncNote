@@ -12,4 +12,9 @@ public interface INoteStore
     ChecklistItem AddChecklistItem(Guid noteId, string text);
     void UpdateChecklistItem(ChecklistItem item);
     bool DeleteChecklistItem(Guid itemId);
+
+    string FilesDirectory { get; }
+    IReadOnlyList<Attachment> GetAttachments(Guid noteId);
+    Attachment AddAttachment(Guid noteId, string sourcePath);
+    bool DeleteAttachment(Guid attachmentId);
 }

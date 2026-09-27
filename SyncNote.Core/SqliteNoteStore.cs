@@ -7,9 +7,10 @@ namespace SyncNote.Core;
 // keyvalue(key, value) — schema_version и device_id.
 public sealed class SqliteNoteStore : INoteStore, IDisposable
 {
-    private const int SchemaVersion = 3;
+    private const int SchemaVersion = 4;
     private readonly SqliteConnection _db;
     private readonly string _deviceId;
+    private readonly string _filesDir;
     private bool _disposed;
 
     public SqliteNoteStore(string filePath)
@@ -26,7 +27,12 @@ public sealed class SqliteNoteStore : INoteStore, IDisposable
         }
         Migrate();
         _deviceId = GetOrCreateDeviceId();
+        _filesDir = Path.Combine(
+            Path.GetDirectoryName(Path.GetFullPath(filePath)) ?? ".", "files");
+        Directory.CreateDirectory(_filesDir);
     }
+
+    public string FilesDirectory => _filesDir;
 
     public static string DefaultPath =>
         Path.Combine(
@@ -54,7 +60,7 @@ public sealed class SqliteNoteStore : INoteStore, IDisposable
         var version = versionText is not null && int.TryParse(versionText, out var v) ? v : 0;
         if (version == 0)
         {
-            // Свежая установка: полная схема v3 сразу.
+            // Свежая установка: полная схема v4 сразу.
             cmd.CommandText = """
                 ALTER TABLE notes ADD COLUMN title_norm TEXT NOT NULL DEFAULT '';
                 ALTER TABLE notes ADD COLUMN body_norm TEXT NOT NULL DEFAULT '';
@@ -66,9 +72,19 @@ public sealed class SqliteNoteStore : INoteStore, IDisposable
                     is_checked INTEGER NOT NULL DEFAULT 0);
                 CREATE INDEX IF NOT EXISTS idx_checklist_note
                     ON checklist_items(note_id, position);
+                CREATE TABLE IF NOT EXISTS attachments(
+                    id TEXT PRIMARY KEY,
+                    note_id TEXT NOT NULL REFERENCES notes(id),
+                    file_name TEXT NOT NULL,
+                    mime TEXT NOT NULL,
+                    size INTEGER NOT NULL,
+                    sha256 TEXT NOT NULL,
+                    stored_name TEXT NOT NULL);
+                CREATE INDEX IF NOT EXISTS idx_attachments_note
+                    ON attachments(note_id);
                 """;
             cmd.ExecuteNonQuery();
-            SetValue(cmd, "schema_version", "3");
+            SetValue(cmd, "schema_version", "4");
         }
         else if (version == 1)
         {
@@ -112,6 +128,25 @@ public sealed class SqliteNoteStore : INoteStore, IDisposable
                 """;
             cmd.ExecuteNonQuery();
             SetValue(cmd, "schema_version", "3");
+            version = 3;
+        }
+        if (version == 3)
+        {
+            // v3 -> v4: вложения (метаданные; файлы — в каталоге files/).
+            cmd.CommandText = """
+                CREATE TABLE IF NOT EXISTS attachments(
+                    id TEXT PRIMARY KEY,
+                    note_id TEXT NOT NULL REFERENCES notes(id),
+                    file_name TEXT NOT NULL,
+                    mime TEXT NOT NULL,
+                    size INTEGER NOT NULL,
+                    sha256 TEXT NOT NULL,
+                    stored_name TEXT NOT NULL);
+                CREATE INDEX IF NOT EXISTS idx_attachments_note
+                    ON attachments(note_id);
+                """;
+            cmd.ExecuteNonQuery();
+            SetValue(cmd, "schema_version", "4");
         }
         tx.Commit();
     }
@@ -336,6 +371,85 @@ public sealed class SqliteNoteStore : INoteStore, IDisposable
         del.Parameters.AddWithValue("$id", itemId.ToString("N"));
         del.ExecuteNonQuery();
         tx.Commit();
+        TouchNote(del, noteId);
+        return true;
+    }
+
+    public IReadOnlyList<Attachment> GetAttachments(Guid noteId)
+    {
+        using var cmd = _db.CreateCommand();
+        cmd.CommandText = "SELECT id, note_id, file_name, mime, size, sha256, stored_name " +
+            "FROM attachments WHERE note_id = $n ORDER BY file_name;";
+        cmd.Parameters.AddWithValue("$n", noteId.ToString("N"));
+        var result = new List<Attachment>();
+        using var reader = cmd.ExecuteReader();
+        while (reader.Read())
+        {
+            result.Add(new Attachment
+            {
+                Id = Guid.Parse(reader.GetString(0)),
+                NoteId = Guid.Parse(reader.GetString(1)),
+                FileName = reader.GetString(2),
+                MimeType = reader.GetString(3),
+                SizeBytes = reader.GetInt64(4),
+                Sha256 = reader.GetString(5),
+                StoredName = reader.GetString(6),
+            });
+        }
+        return result;
+    }
+
+    public Attachment AddAttachment(Guid noteId, string sourcePath)
+    {
+        var att = new Attachment { NoteId = noteId };
+        // Сначала файл (атомарно), затем метаданные в транзакции.
+        // При падении между ними остаётся файл-сирота — см. тест.
+        var (storedName, size, sha) = AttachmentIo.CopyIn(_filesDir, att.Id, sourcePath);
+        att.FileName = Path.GetFileName(sourcePath);
+        att.MimeType = AttachmentIo.MimeByExtension(att.FileName);
+        att.SizeBytes = size;
+        att.Sha256 = sha;
+        att.StoredName = storedName;
+        using var tx = _db.BeginTransaction();
+        using var cmd = _db.CreateCommand();
+        cmd.Transaction = (SqliteTransaction)tx;
+        cmd.CommandText = "INSERT INTO attachments(id, note_id, file_name, mime, size, sha256, stored_name) " +
+            "VALUES($id, $n, $f, $m, $s, $h, $sn);";
+        cmd.Parameters.AddWithValue("$id", att.Id.ToString("N"));
+        cmd.Parameters.AddWithValue("$n", noteId.ToString("N"));
+        cmd.Parameters.AddWithValue("$f", att.FileName);
+        cmd.Parameters.AddWithValue("$m", att.MimeType);
+        cmd.Parameters.AddWithValue("$s", size);
+        cmd.Parameters.AddWithValue("$h", sha);
+        cmd.Parameters.AddWithValue("$sn", storedName);
+        cmd.ExecuteNonQuery();
+        tx.Commit();
+        TouchNote(cmd, noteId);
+        return att;
+    }
+
+    public bool DeleteAttachment(Guid attachmentId)
+    {
+        string? storedName = null;
+        Guid noteId = Guid.Empty;
+        using (var cmd = _db.CreateCommand())
+        {
+            cmd.CommandText = "SELECT note_id, stored_name FROM attachments WHERE id = $id;";
+            cmd.Parameters.AddWithValue("$id", attachmentId.ToString("N"));
+            using var reader = cmd.ExecuteReader();
+            if (!reader.Read())
+                return false;
+            noteId = Guid.Parse(reader.GetString(0));
+            storedName = reader.GetString(1);
+        }
+        using var tx = _db.BeginTransaction();
+        using var del = _db.CreateCommand();
+        del.Transaction = (SqliteTransaction)tx;
+        del.CommandText = "DELETE FROM attachments WHERE id = $id;";
+        del.Parameters.AddWithValue("$id", attachmentId.ToString("N"));
+        del.ExecuteNonQuery();
+        tx.Commit();
+        try { File.Delete(Path.Combine(_filesDir, storedName)); } catch { }
         TouchNote(del, noteId);
         return true;
     }
