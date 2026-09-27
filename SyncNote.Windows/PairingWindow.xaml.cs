@@ -45,7 +45,7 @@ public partial class PairingWindow : Window
         var json = JsonSerializer.Serialize(new
         {
             v = 1,
-            host = "127.0.0.1",
+            host = GetLanIPv4(),
             port = _port,
             p2pName = Environment.MachineName,
             token,
@@ -53,6 +53,42 @@ public partial class PairingWindow : Window
         });
         QrImage.Source = RenderQr(json);
         TokenInfo.Text = $"Код действует до {exp:HH:mm:ss} (5 минут, одноразовый).";
+    }
+
+    // Первый рабочий IPv4 (для телефона по LAN / Wi-Fi Direct).
+    // Петля 127.0.0.1 доступна только через adb reverse — вручную.
+    private static string GetLanIPv4()
+    {
+        try
+        {
+            foreach (var ni in System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces())
+            {
+                if (ni.OperationalStatus != System.Net.NetworkInformation.OperationalStatus.Up)
+                    continue;
+                foreach (var addr in ni.GetIPProperties().UnicastAddresses)
+                {
+                    var ip = addr.Address;
+                    if (ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork
+                        && !System.Net.IPAddress.IsLoopback(ip)
+                        && ip.ToString().StartsWith("192.168."))
+                        return ip.ToString();
+                }
+            }
+            foreach (var ni in System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces())
+            {
+                if (ni.OperationalStatus != System.Net.NetworkInformation.OperationalStatus.Up)
+                    continue;
+                foreach (var addr in ni.GetIPProperties().UnicastAddresses)
+                {
+                    var ip = addr.Address;
+                    if (ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork
+                        && !System.Net.IPAddress.IsLoopback(ip))
+                        return ip.ToString();
+                }
+            }
+        }
+        catch { }
+        return "127.0.0.1";
     }
 
     private async void BtButton_Click(object sender, RoutedEventArgs e)
