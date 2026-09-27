@@ -1,0 +1,34 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SyncNote.Core", "SyncNote.Core\SyncNote.Core.csproj", "{D3D1DE4D-A67E-4C4A-B847-8A811D39DAD7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SyncNote.Windows", "SyncNote.Windows\SyncNote.Windows.csproj", "{9704CF36-D157-4395-AA23-97812F2D9F64}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SyncNote.Core.Tests", "SyncNote.Core.Tests\SyncNote.Core.Tests.csproj", "{0C564EB8-6956-47DA-BD0F-D848F1C3D183}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D3D1DE4D-A67E-4C4A-B847-8A811D39DAD7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D3D1DE4D-A67E-4C4A-B847-8A811D39DAD7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D3D1DE4D-A67E-4C4A-B847-8A811D39DAD7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D3D1DE4D-A67E-4C4A-B847-8A811D39DAD7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9704CF36-D157-4395-AA23-97812F2D9F64}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9704CF36-D157-4395-AA23-97812F2D9F64}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9704CF36-D157-4395-AA23-97812F2D9F64}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9704CF36-D157-4395-AA23-97812F2D9F64}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0C564EB8-6956-47DA-BD0F-D848F1C3D183}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0C564EB8-6956-47DA-BD0F-D848F1C3D183}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0C564EB8-6956-47DA-BD0F-D848F1C3D183}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0C564EB8-6956-47DA-BD0F-D848F1C3D183}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
