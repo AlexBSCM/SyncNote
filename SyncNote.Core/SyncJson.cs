@@ -18,9 +18,28 @@ public static class SyncJson
     public static SyncNoteDto FromNode(JsonNode node)
     {
         var obj = node.AsObject();
+        string rawId;
+        try
+        {
+            rawId = obj["Id"]!.GetValue<string>();
+        }
+        catch (Exception ex)
+        {
+            throw new FormatException($"Id field unreadable: {ex.GetType().Name}");
+        }
+        Guid id;
+        try
+        {
+            id = Guid.Parse(rawId);
+        }
+        catch (Exception)
+        {
+            var shown = rawId.Length > 40 ? rawId[..40] : rawId;
+            throw new FormatException($"Bad Id len={rawId.Length} val='{shown}'");
+        }
         var dto = new SyncNoteDto
         {
-            Id = Guid.Parse(obj["Id"]!.GetValue<string>()),
+            Id = id,
             Rev = obj["Rev"]!.GetValue<long>(),
             BaseRev = obj["BaseRev"]!.GetValue<long>(),
             Title = obj["Title"]?.GetValue<string>() ?? string.Empty,
