@@ -6,11 +6,12 @@ namespace SyncNote.Windows;
 
 public partial class MainWindow : Window
 {
-    private readonly INoteStore _store = new InMemoryNoteStore();
+    private readonly SqliteNoteStore _store = new(SqliteNoteStore.DefaultPath);
 
     public MainWindow()
     {
         InitializeComponent();
+        Closed += (_, _) => _store.Dispose();
         RefreshList();
     }
 

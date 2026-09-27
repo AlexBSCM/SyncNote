@@ -1,0 +1,72 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TestRun id="8be3eedb-f7a3-4a3d-8b58-e363dcb3d195" name="ALEX@HOME-PC 2026-09-27 08:23:18" runUser="HOME-PC\ALEX" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2026-09-27T08:23:18.6960917+07:00" queuing="2026-09-27T08:23:18.6960920+07:00" start="2026-09-27T08:23:17.2460902+07:00" finish="2026-09-27T08:23:18.7121231+07:00" />
+  <TestSettings name="default" id="42986034-a55d-4534-b2e2-1edc63148f40">
+    <Deployment runDeploymentRoot="ALEX_HOME-PC_2026-09-27_08_23_18" />
+  </TestSettings>
+  <Results>
+    <UnitTestResult executionId="091a7347-1a17-4c49-973f-adead6392ea4" testId="6e9c8754-e7dc-190d-f23d-d57df69659a0" testName="Update_Missing_Throws" computerName="HOME-PC" duration="00:00:00.0131682" startTime="2026-09-27T08:23:18.3996675+07:00" endTime="2026-09-27T08:23:18.4157283+07:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="091a7347-1a17-4c49-973f-adead6392ea4" />
+    <UnitTestResult executionId="bc4443d1-5a2c-4fa6-aa35-108c7fb7199f" testId="534ddbf3-48b2-d798-bb33-6a36e4b74b8f" testName="Delete_RemovesExisting_ReturnsFalseForMissing" computerName="HOME-PC" duration="00:00:00.0007753" startTime="2026-09-27T08:23:18.2657649+07:00" endTime="2026-09-27T08:23:18.2668179+07:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="bc4443d1-5a2c-4fa6-aa35-108c7fb7199f" />
+    <UnitTestResult executionId="5629acdb-a195-4f42-861b-f348e540e0dc" testId="b581730f-ee53-f820-3d72-b886542a2c75" testName="Add_List_Search_Update_Delete" computerName="HOME-PC" duration="00:00:00.1169092" startTime="2026-09-27T08:23:18.2669123+07:00" endTime="2026-09-27T08:23:18.3843665+07:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="5629acdb-a195-4f42-861b-f348e540e0dc">
+      <Output>
+        <ErrorInfo>
+          <Message>Сбой Assert.AreEqual. Ожидается: &lt;1&gt;. Фактически: &lt;0&gt;. </Message>
+          <StackTrace>   at SyncNote.Core.Tests.SqliteNoteStoreTests.Add_List_Search_Update_Delete() in D:\OpenCode\SyncNote\SyncNote.Core.Tests\SqliteNoteStoreTests.cs:line 23&#xD;
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)&#xD;
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)&#xD;
+</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="d935cbda-d210-4610-896e-62aa35cce7d1" testId="e6bbb083-991b-9a6c-7714-def356f5de22" testName="Add_List_ReturnsNewestFirst" computerName="HOME-PC" duration="00:00:00.0126908" startTime="2026-09-27T08:23:18.2100183+07:00" endTime="2026-09-27T08:23:18.2494127+07:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="d935cbda-d210-4610-896e-62aa35cce7d1" />
+    <UnitTestResult executionId="673832ea-7def-4350-85e5-f9ef5ad5662d" testId="654c8c9d-9ee1-5a11-42ba-79a06e2dcbc3" testName="Data_Persists_Across_Reopen" computerName="HOME-PC" duration="00:00:00.0148423" startTime="2026-09-27T08:23:18.3845328+07:00" endTime="2026-09-27T08:23:18.3995858+07:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="673832ea-7def-4350-85e5-f9ef5ad5662d" />
+    <UnitTestResult executionId="30c19b93-5506-4b75-839c-08c0698f4e9c" testId="6e5deb61-387f-f750-c9b8-6f9335ef6b85" testName="Update_ChangesTitleAndBody" computerName="HOME-PC" duration="00:00:00.0009139" startTime="2026-09-27T08:23:18.2646345+07:00" endTime="2026-09-27T08:23:18.2657034+07:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="30c19b93-5506-4b75-839c-08c0698f4e9c" />
+    <UnitTestResult executionId="d0591d5e-2c14-4e10-ab02-15e48106dd1f" testId="754b19e2-e0a5-3268-cbcc-430cb87b3e9b" testName="Search_FindsByTitleAndBody_CaseInsensitive" computerName="HOME-PC" duration="00:00:00.0012764" startTime="2026-09-27T08:23:18.2626221+07:00" endTime="2026-09-27T08:23:18.2642040+07:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="d0591d5e-2c14-4e10-ab02-15e48106dd1f" />
+  </Results>
+  <TestDefinitions>
+    <UnitTest name="Search_FindsByTitleAndBody_CaseInsensitive" storage="d:\opencode\syncnote\syncnote.core.tests\bin\debug\net8.0\syncnote.core.tests.dll" id="754b19e2-e0a5-3268-cbcc-430cb87b3e9b">
+      <Execution id="d0591d5e-2c14-4e10-ab02-15e48106dd1f" />
+      <TestMethod codeBase="D:\OpenCode\SyncNote\SyncNote.Core.Tests\bin\Debug\net8.0\SyncNote.Core.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="SyncNote.Core.Tests.NoteStoreTests" name="Search_FindsByTitleAndBody_CaseInsensitive" />
+    </UnitTest>
+    <UnitTest name="Update_ChangesTitleAndBody" storage="d:\opencode\syncnote\syncnote.core.tests\bin\debug\net8.0\syncnote.core.tests.dll" id="6e5deb61-387f-f750-c9b8-6f9335ef6b85">
+      <Execution id="30c19b93-5506-4b75-839c-08c0698f4e9c" />
+      <TestMethod codeBase="D:\OpenCode\SyncNote\SyncNote.Core.Tests\bin\Debug\net8.0\SyncNote.Core.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="SyncNote.Core.Tests.NoteStoreTests" name="Update_ChangesTitleAndBody" />
+    </UnitTest>
+    <UnitTest name="Update_Missing_Throws" storage="d:\opencode\syncnote\syncnote.core.tests\bin\debug\net8.0\syncnote.core.tests.dll" id="6e9c8754-e7dc-190d-f23d-d57df69659a0">
+      <Execution id="091a7347-1a17-4c49-973f-adead6392ea4" />
+      <TestMethod codeBase="D:\OpenCode\SyncNote\SyncNote.Core.Tests\bin\Debug\net8.0\SyncNote.Core.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="SyncNote.Core.Tests.SqliteNoteStoreTests" name="Update_Missing_Throws" />
+    </UnitTest>
+    <UnitTest name="Data_Persists_Across_Reopen" storage="d:\opencode\syncnote\syncnote.core.tests\bin\debug\net8.0\syncnote.core.tests.dll" id="654c8c9d-9ee1-5a11-42ba-79a06e2dcbc3">
+      <Execution id="673832ea-7def-4350-85e5-f9ef5ad5662d" />
+      <TestMethod codeBase="D:\OpenCode\SyncNote\SyncNote.Core.Tests\bin\Debug\net8.0\SyncNote.Core.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="SyncNote.Core.Tests.SqliteNoteStoreTests" name="Data_Persists_Across_Reopen" />
+    </UnitTest>
+    <UnitTest name="Add_List_Search_Update_Delete" storage="d:\opencode\syncnote\syncnote.core.tests\bin\debug\net8.0\syncnote.core.tests.dll" id="b581730f-ee53-f820-3d72-b886542a2c75">
+      <Execution id="5629acdb-a195-4f42-861b-f348e540e0dc" />
+      <TestMethod codeBase="D:\OpenCode\SyncNote\SyncNote.Core.Tests\bin\Debug\net8.0\SyncNote.Core.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="SyncNote.Core.Tests.SqliteNoteStoreTests" name="Add_List_Search_Update_Delete" />
+    </UnitTest>
+    <UnitTest name="Delete_RemovesExisting_ReturnsFalseForMissing" storage="d:\opencode\syncnote\syncnote.core.tests\bin\debug\net8.0\syncnote.core.tests.dll" id="534ddbf3-48b2-d798-bb33-6a36e4b74b8f">
+      <Execution id="bc4443d1-5a2c-4fa6-aa35-108c7fb7199f" />
+      <TestMethod codeBase="D:\OpenCode\SyncNote\SyncNote.Core.Tests\bin\Debug\net8.0\SyncNote.Core.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="SyncNote.Core.Tests.NoteStoreTests" name="Delete_RemovesExisting_ReturnsFalseForMissing" />
+    </UnitTest>
+    <UnitTest name="Add_List_ReturnsNewestFirst" storage="d:\opencode\syncnote\syncnote.core.tests\bin\debug\net8.0\syncnote.core.tests.dll" id="e6bbb083-991b-9a6c-7714-def356f5de22">
+      <Execution id="d935cbda-d210-4610-896e-62aa35cce7d1" />
+      <TestMethod codeBase="D:\OpenCode\SyncNote\SyncNote.Core.Tests\bin\Debug\net8.0\SyncNote.Core.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="SyncNote.Core.Tests.NoteStoreTests" name="Add_List_ReturnsNewestFirst" />
+    </UnitTest>
+  </TestDefinitions>
+  <TestEntries>
+    <TestEntry testId="6e9c8754-e7dc-190d-f23d-d57df69659a0" executionId="091a7347-1a17-4c49-973f-adead6392ea4" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="534ddbf3-48b2-d798-bb33-6a36e4b74b8f" executionId="bc4443d1-5a2c-4fa6-aa35-108c7fb7199f" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="b581730f-ee53-f820-3d72-b886542a2c75" executionId="5629acdb-a195-4f42-861b-f348e540e0dc" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="e6bbb083-991b-9a6c-7714-def356f5de22" executionId="d935cbda-d210-4610-896e-62aa35cce7d1" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="654c8c9d-9ee1-5a11-42ba-79a06e2dcbc3" executionId="673832ea-7def-4350-85e5-f9ef5ad5662d" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="6e5deb61-387f-f750-c9b8-6f9335ef6b85" executionId="30c19b93-5506-4b75-839c-08c0698f4e9c" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="754b19e2-e0a5-3268-cbcc-430cb87b3e9b" executionId="d0591d5e-2c14-4e10-ab02-15e48106dd1f" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+  </TestEntries>
+  <TestLists>
+    <TestList name="Список результатов" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestList name="Все загруженные результаты" id="19431567-8539-422a-85d7-44ee4e166bda" />
+  </TestLists>
+  <ResultSummary outcome="Failed">
+    <Counters total="7" executed="7" passed="6" failed="1" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+  </ResultSummary>
+</TestRun>

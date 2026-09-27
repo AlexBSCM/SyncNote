@@ -34,6 +34,7 @@ public sealed class InMemoryNoteStore : INoteStore
         existing.Title = note.Title;
         existing.Body = note.Body;
         existing.UpdatedAt = DateTime.UtcNow;
+        existing.Rev += 1;
     }
 
     public bool Delete(Guid id)
