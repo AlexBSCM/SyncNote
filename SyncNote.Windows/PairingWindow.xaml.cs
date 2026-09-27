@@ -136,7 +136,8 @@ public partial class PairingWindow : Window
         }
         finally
         {
-            P2pInfo.Text = _p2pGroup.Status;
+            if (_p2pGroup.IsActive)
+                P2pInfo.Text = _p2pGroup.Status;
             IssueNewToken();
         }
     }
