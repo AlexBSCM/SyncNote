@@ -33,6 +33,14 @@ class NotesRepository(ctx: Context) : SyncStore {
 
     fun list(): List<Note> = query(null)
 
+    fun listAll(): List<Note> = list()
+
+    fun deleteNotes(ids: List<String>): Int {
+        var n = 0
+        for (id in ids) if (delete(id)) n++
+        return n
+    }
+
     fun search(q: String): List<Note> =
         if (q.isBlank()) list() else query(q.lowercase())
 

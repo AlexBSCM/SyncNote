@@ -27,6 +27,10 @@ object SyncAuto {
         return host to port
     }
 
+    fun clearProfile(ctx: Context) {
+        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().clear().apply()
+    }
+
     fun profileHosts(ctx: Context): List<String> {
         val p = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         return (p.getString(KEY_HOSTS, null)?.split(",") ?: emptyList()) +

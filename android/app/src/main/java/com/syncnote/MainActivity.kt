@@ -1,103 +1,30 @@
 package com.syncnote
 
-import android.content.Intent
 import android.os.Bundle
-import android.text.Editable
-import android.text.TextWatcher
-import android.view.LayoutInflater
-import android.view.ViewGroup
-import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
-import java.text.DateFormat
-import java.util.Date
+import com.google.android.material.bottomnavigation.BottomNavigationView
+import androidx.fragment.app.Fragment
 
-// Этап UI Android: список + поиск + переход в редактор.
-// Синхронизация и QR — следующие этапы (см. docs/architecture.md).
 class MainActivity : AppCompatActivity() {
-    private lateinit var repo: NotesRepository
-    private lateinit var adapter: NotesAdapter
-    private val pollHandler = android.os.Handler(android.os.Looper.getMainLooper())
-    private val poller = object : Runnable {
-        override fun run() {
-            SyncAuto.trigger(this@MainActivity, quiet = true)
-            refresh()
-            pollHandler.postDelayed(this, 5000)
-        }
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        repo = NotesRepository(this)
-        adapter = NotesAdapter { note ->
-            startActivity(Intent(this, EditorActivity::class.java)
-                .putExtra(EditorActivity.EXTRA_NOTE_ID, note.id))
+        if (savedInstanceState == null) {
+            showTab(NotesFragment())
         }
-        findViewById<RecyclerView>(R.id.notesList).also {
-            it.layoutManager = LinearLayoutManager(this)
-            it.adapter = adapter
-        }
-        findViewById<android.widget.EditText>(R.id.searchBox)
-            .addTextChangedListener(object : TextWatcher {
-                override fun afterTextChanged(s: Editable?) = refresh()
-                override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
-                override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
-            })
-        findViewById<android.widget.Button>(R.id.syncButton).setOnClickListener {
-            startActivity(Intent(this, SyncActivity::class.java))
-        }
-        findViewById<android.widget.Button>(R.id.conflictsButton).setOnClickListener {
-            startActivity(Intent(this, ConflictsActivity::class.java))
-        }
-        findViewById<android.widget.Button>(R.id.addButton).setOnClickListener {
-            val n = repo.add("", "")
-            startActivity(Intent(this, EditorActivity::class.java)
-                .putExtra(EditorActivity.EXTRA_NOTE_ID, n.id))
-        }
+        findViewById<BottomNavigationView>(R.id.bottomNav)
+            .setOnItemSelectedListener { item ->
+                when (item.itemId) {
+                    R.id.tab_settings -> showTab(SettingsFragment())
+                    else -> showTab(NotesFragment())
+                }
+                true
+            }
     }
 
-    override fun onResume() {
-        super.onResume()
-        refresh()
-        // Подтягиваем правки с ПК при возврате в список + опрос, пока открыты.
-        SyncAuto.trigger(this)
-        pollHandler.postDelayed(poller, 5000)
-    }
-
-    override fun onPause() {
-        pollHandler.removeCallbacks(poller)
-        super.onPause()
-    }
-
-    private fun refresh() {
-        val q = findViewById<android.widget.EditText>(R.id.searchBox).text.toString()
-        adapter.submit(if (q.isBlank()) repo.list() else repo.search(q))
-    }
-
-    private class NotesAdapter(val onClick: (Note) -> Unit) :
-        RecyclerView.Adapter<NotesAdapter.Holder>() {
-        private var items: List<Note> = emptyList()
-
-        class Holder(parent: ViewGroup) : RecyclerView.ViewHolder(
-            LayoutInflater.from(parent.context).inflate(R.layout.item_note, parent, false)) {
-            val title: TextView = itemView.findViewById(R.id.itemTitle)
-            val date: TextView = itemView.findViewById(R.id.itemDate)
-        }
-
-        fun submit(notes: List<Note>) {
-            items = notes
-            notifyDataSetChanged()
-        }
-
-        override fun onCreateViewHolder(p: ViewGroup, v: Int) = Holder(p)
-        override fun getItemCount() = items.size
-        override fun onBindViewHolder(h: Holder, pos: Int) {
-            val n = items[pos]
-            h.title.text = n.title.ifBlank { "(без заголовка)" }
-            h.date.text = DateFormat.getDateTimeInstance().format(Date(n.updatedAt))
-            h.itemView.setOnClickListener { onClick(n) }
-        }
+    private fun showTab(f: Fragment) {
+        supportFragmentManager.beginTransaction()
+            .replace(R.id.fragmentBox, f)
+            .commit()
     }
 }
