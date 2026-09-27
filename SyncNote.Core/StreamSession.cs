@@ -56,6 +56,7 @@ public static class StreamSession
 
             var pending = new Dictionary<string, (string Name, string Mime, byte[] Bytes)>();
             var (knowledge, firstExtra) = await ReadKnowledgeAsync(stream, ct);
+            ServerLog.Line($"knowledge items={knowledge.Count} hasExtra={firstExtra is not null}");
             if (firstExtra is not null)
             {
                 await HandleClientMessage(store, stream, firstExtra, pending, ct);
@@ -123,6 +124,7 @@ public static class StreamSession
         CancellationToken ct)
     {
         var type = msg["t"]?.GetValue<string>();
+        ServerLog.Line($"msg {type}");
         if (type == "file_begin" || type == "file_chunk" || type == "file_end")
         {
             BufferFileChunk(msg, pending);
