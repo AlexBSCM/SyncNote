@@ -156,6 +156,19 @@ class NotesRepository(ctx: Context) : SyncStore {
         return rows > 0
     }
 
+    fun deleteAttachment(id: String): Boolean {
+        val pair = db.readableDatabase.rawQuery(
+            "SELECT note_id, stored_name FROM attachments WHERE id=?",
+            arrayOf(id)).use { c ->
+            if (!c.moveToFirst()) return false
+            c.getString(0) to c.getString(1)
+        }
+        db.writableDatabase.delete("attachments", "id=?", arrayOf(id))
+        try { File(filesRoot, pair.second).delete() } catch (_: Exception) { }
+        touchNote(pair.first)
+        return true
+    }
+
     override fun tryGet(id: String): Note? = get(id)
 
     override fun getSyncRev(noteId: String): Long {
