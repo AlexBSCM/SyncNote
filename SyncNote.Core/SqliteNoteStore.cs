@@ -30,6 +30,41 @@ public sealed class SqliteNoteStore : ISyncStore, IDisposable
         _filesDir = Path.Combine(
             Path.GetDirectoryName(Path.GetFullPath(filePath)) ?? ".", "files");
         Directory.CreateDirectory(_filesDir);
+        RepairStoredNames();
+    }
+
+    // Чиним файлы с чужим расширением (остатки старого импорта):
+    // переименовываем под настоящее имя, метаданные обновляем.
+    private void RepairStoredNames()
+    {
+        try
+        {
+            using var cmd = _db.CreateCommand();
+            cmd.CommandText = "SELECT id, file_name, stored_name FROM attachments;";
+            var rows = new List<(string Id, string FileName, string Stored)>();
+            using (var reader = cmd.ExecuteReader())
+                while (reader.Read())
+                    rows.Add((reader.GetString(0), reader.GetString(1), reader.GetString(2)));
+            foreach (var (id, fileName, stored) in rows)
+            {
+                var proper = $"{Guid.Parse(id):N}_{AttachmentIo.SanitizeFileName(fileName)}";
+                if (proper == stored)
+                    continue;
+                var src = Path.Combine(_filesDir, stored);
+                var dst = Path.Combine(_filesDir, proper);
+                if (File.Exists(src) && !File.Exists(dst))
+                    File.Move(src, dst);
+                if (File.Exists(dst))
+                {
+                    using var up = _db.CreateCommand();
+                    up.CommandText = "UPDATE attachments SET stored_name = $s WHERE id = $id;";
+                    up.Parameters.AddWithValue("$s", proper);
+                    up.Parameters.AddWithValue("$id", id);
+                    up.ExecuteNonQuery();
+                }
+            }
+        }
+        catch { }
     }
 
     public string FilesDirectory => _filesDir;
@@ -606,10 +641,21 @@ public sealed class SqliteNoteStore : ISyncStore, IDisposable
             var att = AddAttachment(noteId, tmp);
             att.FileName = fileName;
             att.MimeType = mime;
+            // Хранимый файл должен нести настоящее расширение, иначе ОС
+            // не подберёт программу для открытия.
+            var properName = $"{att.Id:N}_{AttachmentIo.SanitizeFileName(fileName)}";
+            if (properName != att.StoredName)
+            {
+                File.Move(
+                    Path.Combine(_filesDir, att.StoredName),
+                    Path.Combine(_filesDir, properName));
+                att.StoredName = properName;
+            }
             using var cmd = _db.CreateCommand();
-            cmd.CommandText = "UPDATE attachments SET file_name = $f, mime = $m WHERE id = $id;";
+            cmd.CommandText = "UPDATE attachments SET file_name = $f, mime = $m, stored_name = $s WHERE id = $id;";
             cmd.Parameters.AddWithValue("$f", fileName);
             cmd.Parameters.AddWithValue("$m", mime);
+            cmd.Parameters.AddWithValue("$s", att.StoredName);
             cmd.Parameters.AddWithValue("$id", att.Id.ToString("N"));
             cmd.ExecuteNonQuery();
             return att;
