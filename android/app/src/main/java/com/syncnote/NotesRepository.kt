@@ -209,8 +209,7 @@ class NotesRepository(ctx: Context) : SyncStore {
 
     override fun setSyncRev(noteId: String, rev: Long) {
         db.writableDatabase.execSQL(
-            "INSERT INTO syncstate(note_id, sync_rev) VALUES(?, ?) " +
-                "ON CONFLICT(note_id) DO UPDATE SET sync_rev=excluded.sync_rev",
+            "INSERT OR REPLACE INTO syncstate(note_id, sync_rev) VALUES(?, ?)",
             arrayOf(noteId, rev))
     }
 
@@ -251,12 +250,8 @@ class NotesRepository(ctx: Context) : SyncStore {
         val w = db.writableDatabase
         w.beginTransaction()
         try {
-            w.execSQL("""INSERT INTO notes(id, rev, title, body, updated_at, author_device,
-                is_deleted, title_norm, body_norm) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(id) DO UPDATE SET rev=excluded.rev, title=excluded.title,
-                body=excluded.body, updated_at=excluded.updated_at,
-                author_device=excluded.author_device, is_deleted=excluded.is_deleted,
-                title_norm=excluded.title_norm, body_norm=excluded.body_norm""",
+            w.execSQL("""INSERT OR REPLACE INTO notes(id, rev, title, body, updated_at, author_device,
+                is_deleted, title_norm, body_norm) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 arrayOf(dto.id, dto.rev, dto.title, dto.body, dto.updatedAt, dto.author,
                     if (dto.isDeleted) 1 else 0,
                     dto.title.lowercase(), dto.body.lowercase()))

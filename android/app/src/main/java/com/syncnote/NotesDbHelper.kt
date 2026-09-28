@@ -73,6 +73,9 @@ class NotesDbHelper(ctx: Context) :
             db.execSQL("""CREATE TABLE IF NOT EXISTS file_syncstate(
                 file_id TEXT PRIMARY KEY, sync_rev INTEGER NOT NULL DEFAULT 0)""")
         }
+        // Метка версии в keyvalue нигде не читается (источник истины —
+        // user_version SQLiteOpenHelper), но держим её честной для диагностики.
+        db.execSQL("INSERT OR REPLACE INTO keyvalue(key, value) VALUES('schema_version', '8')")
     }
 
     private fun v5to6(db: SQLiteDatabase) {
