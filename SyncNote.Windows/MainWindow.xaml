@@ -22,126 +22,287 @@
             </StatusBarItem>
         </StatusBar>
         <TabControl x:Name="MainTabs">
-            <TabItem Header="Заметки">
+            <TabItem Header="Заметки" FontFamily="Segoe UI">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="270" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
 
-                    <DockPanel Grid.Column="0" Margin="8">
-                        <TextBlock DockPanel.Dock="Top" Text="Поиск" Margin="0,0,0,4" />
-                        <TextBox x:Name="SearchBox" DockPanel.Dock="Top" Margin="0,0,0,8"
-                                 TextChanged="SearchBox_TextChanged" />
-                        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,8,0,0">
-                            <Button x:Name="AddButton" Content="Добавить" Width="100"
-                                    Click="AddButton_Click" />
-                            <Button x:Name="DeleteButton" Content="Удалить" Width="100" Margin="8,0,0,0"
-                                    Click="DeleteButton_Click" />
-                        </StackPanel>
-                        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,4,0,0">
-                            <CheckBox x:Name="SelectAllNotesBox" Content="Выбрать все"
-                                      VerticalAlignment="Center"
-                                      Checked="SelectAllNotesBox_Changed"
-                                      Unchecked="SelectAllNotesBox_Changed" />
-                            <Button x:Name="DeleteCheckedButton" Content="Удалить выбранные"
-                                    Margin="8,0,0,0" Click="DeleteChecked_Click" />
-                        </StackPanel>
-                        <ListBox x:Name="NotesList" SelectionChanged="NotesList_SelectionChanged">
+                    <Border Grid.Column="0" Background="{StaticResource FilesPanelBrush}"
+                            BorderBrush="{StaticResource FilesLineBrush}"
+                            BorderThickness="0,0,1,0">
+                    <DockPanel>
+                        <Border DockPanel.Dock="Top" Padding="12"
+                                BorderBrush="{StaticResource FilesLineSoftBrush}"
+                                BorderThickness="0,0,0,1">
+                            <TextBox x:Name="SearchBox" Style="{StaticResource FilesSearchBox}"
+                                     TextChanged="SearchBox_TextChanged" />
+                        </Border>
+                        <Border DockPanel.Dock="Bottom" Background="{StaticResource FilesPanel2Brush}"
+                                BorderBrush="{StaticResource FilesLineSoftBrush}"
+                                BorderThickness="0,1,0,0" Padding="12">
+                            <StackPanel>
+                                <StackPanel Orientation="Horizontal">
+                                    <Button x:Name="AddButton" Content="Добавить"
+                                            Style="{StaticResource FilesBtnPrimary}"
+                                            Click="AddButton_Click" />
+                                    <Button x:Name="DeleteButton" Content="Удалить" Margin="8,0,0,0"
+                                            Style="{StaticResource FilesBtnDanger}"
+                                            Click="DeleteButton_Click" />
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                    <CheckBox x:Name="SelectAllNotesBox" Content="Выбрать все"
+                                              Style="{StaticResource MaterialCheckBox}"
+                                              VerticalAlignment="Center"
+                                              Checked="SelectAllNotesBox_Changed"
+                                              Unchecked="SelectAllNotesBox_Changed" />
+                                    <Button x:Name="DeleteCheckedButton" Content="Удалить выбранные"
+                                            Style="{StaticResource FilesBtnDefault}"
+                                            Margin="8,0,0,0" Click="DeleteChecked_Click" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                        <ListBox x:Name="NotesList" Style="{StaticResource FilesList}"
+                                 ItemContainerStyle="{StaticResource FilesListItem}"
+                                 SelectionChanged="NotesList_SelectionChanged">
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
-                                    <StackPanel Orientation="Horizontal" Margin="0,2">
-                                        <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}"
-                                                  VerticalAlignment="Center" />
-                                        <StackPanel Margin="6,0,0,0">
-                                            <TextBlock Text="{Binding Note.Title}" FontWeight="Bold"
+                                    <StackPanel Orientation="Horizontal">
+                                        <CheckBox Style="{StaticResource MaterialCheckBox}"
+                                                  IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                                  VerticalAlignment="Top" Margin="0,2,0,0" />
+                                        <StackPanel Margin="10,0,0,0">
+                                            <TextBlock MaxWidth="180">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Text" Value="{Binding Note.Title}" />
+                                                        <Setter Property="FontSize" Value="14" />
+                                                        <Setter Property="FontWeight" Value="Bold" />
+                                                        <Setter Property="Foreground" Value="{StaticResource FilesTxtBrush}" />
+                                                        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Note.Title}" Value="">
+                                                                <Setter Property="Text" Value="Без названия" />
+                                                                <Setter Property="Foreground" Value="{StaticResource FilesTxt3Brush}" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                            <TextBlock Text="{Binding Note.Body}" FontSize="12"
+                                                       Foreground="{StaticResource FilesTxt2Brush}"
+                                                       TextWrapping="Wrap" MaxHeight="34"
                                                        TextTrimming="CharacterEllipsis" />
-                                            <TextBlock Text="{Binding Note.UpdatedAt, StringFormat=g}"
-                                                       Opacity="0.6" FontSize="11" />
+                                            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                                <TextBlock Text="{Binding Note.UpdatedAt, StringFormat='{}{0:dd MMM yyyy HH:mm}'}"
+                                                           FontSize="11"
+                                                           Foreground="{StaticResource FilesTxt3Brush}"
+                                                           VerticalAlignment="Center" />
+                                                <TextBlock Text="📎" FontSize="11" Margin="6,0,0,0"
+                                                           VerticalAlignment="Center">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding HasAttachments}" Value="True">
+                                                                    <Setter Property="Visibility" Value="Visible" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                                <TextBlock Text="☑" FontSize="11" Margin="4,0,0,0"
+                                                           VerticalAlignment="Center">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding HasChecklist}" Value="True">
+                                                                    <Setter Property="Visibility" Value="Visible" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                                <Border CornerRadius="10" Padding="8,2" Margin="6,0,0,0"
+                                                        VerticalAlignment="Center">
+                                                    <Border.Style>
+                                                        <Style TargetType="Border">
+                                                            <Setter Property="Background" Value="{StaticResource FilesOkBgBrush}" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsModified}" Value="True">
+                                                                    <Setter Property="Background" Value="{StaticResource FilesWarnBgBrush}" />
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding IsConflict}" Value="True">
+                                                                    <Setter Property="Background" Value="{StaticResource FilesErrBgBrush}" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Border.Style>
+                                                    <TextBlock Text="{Binding SyncBadgeText}"
+                                                               FontSize="10" FontWeight="Bold">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="Foreground" Value="{StaticResource FilesOkFgBrush}" />
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding IsModified}" Value="True">
+                                                                        <Setter Property="Foreground" Value="{StaticResource FilesWarnFgBrush}" />
+                                                                    </DataTrigger>
+                                                                    <DataTrigger Binding="{Binding IsConflict}" Value="True">
+                                                                        <Setter Property="Foreground" Value="{StaticResource FilesErrBrush}" />
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                </Border>
+                                            </StackPanel>
                                         </StackPanel>
                                     </StackPanel>
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
                         </ListBox>
                     </DockPanel>
+                    </Border>
 
-                    <DockPanel Grid.Column="1" Margin="8">
+                    <DockPanel Grid.Column="1" Background="{StaticResource FilesPanelBrush}">
                         <TextBlock x:Name="EmptyHint" Text="Выберите заметку в списке или нажмите «Добавить»."
                                    VerticalAlignment="Center" HorizontalAlignment="Center"
-                                   Opacity="0.6" TextWrapping="Wrap" TextAlignment="Center" />
+                                   Foreground="{StaticResource FilesTxt2Brush}" FontSize="13"
+                                   TextWrapping="Wrap" TextAlignment="Center" />
+                        <Border DockPanel.Dock="Bottom" Background="{StaticResource FilesPanel2Brush}"
+                                BorderBrush="{StaticResource FilesLineSoftBrush}"
+                                BorderThickness="0,1,0,0" Padding="16,12"
+                                Visibility="{Binding Visibility, ElementName=EditorPanel}">
+                            <DockPanel LastChildFill="False">
+                                <TextBlock x:Name="DirtyHint" Text="● Есть несохранённые правки"
+                                           FontSize="11"
+                                           Foreground="{StaticResource FilesWarnFgBrush}"
+                                           VerticalAlignment="Center"
+                                           Visibility="Collapsed" />
+                                <Button x:Name="SaveButton" Content="Сохранить"
+                                        Style="{StaticResource FilesBtnPrimary}"
+                                        DockPanel.Dock="Right" IsEnabled="False"
+                                        Click="SaveButton_Click" />
+                            </DockPanel>
+                        </Border>
                         <ScrollViewer VerticalScrollBarVisibility="Auto">
-                            <StackPanel x:Name="EditorPanel" Visibility="Collapsed">
-                                <TextBlock Text="Заголовок" Margin="0,0,0,4" />
+                            <StackPanel x:Name="EditorPanel" Visibility="Collapsed" Margin="24,16,24,16">
+                                <TextBlock Text="Заголовок" FontSize="12"
+                                           Foreground="{StaticResource FilesTxt2Brush}"
+                                           Margin="0,0,0,4" />
                                 <Grid Margin="0,0,0,8">
-                                    <TextBox x:Name="TitleBox" TextChanged="TitleBox_TextChanged" />
+                                    <TextBox x:Name="TitleBox" Style="{StaticResource NoteTitleBox}"
+                                             TextChanged="TitleBox_TextChanged" />
                                     <TextBlock x:Name="TitleWatermark" Text="Заголовок"
-                                               Opacity="0.5" Margin="4,2,0,0" IsHitTestVisible="False"
+                                               Foreground="{StaticResource FilesTxt3Brush}"
+                                               Opacity="0.7" FontSize="19" Margin="4,2,0,0"
+                                               IsHitTestVisible="False"
                                                Visibility="Collapsed" />
                                 </Grid>
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                                    <TextBlock Text="Текст" VerticalAlignment="Center" />
+                                    <TextBlock Text="Текст" FontSize="12"
+                                               Foreground="{StaticResource FilesTxt2Brush}"
+                                               VerticalAlignment="Center" />
                                     <CheckBox x:Name="PreviewCheck" Content="Предпросмотр" Margin="12,0,0,0"
+                                              Style="{StaticResource MaterialCheckBox}"
                                               VerticalAlignment="Center"
                                               Checked="PreviewCheck_Toggled"
                                               Unchecked="PreviewCheck_Toggled" />
                                 </StackPanel>
-                                <TextBox x:Name="BodyBox" AcceptsReturn="True" TextWrapping="Wrap"
+                                <TextBox x:Name="BodyBox" Style="{StaticResource NoteBodyBox}"
+                                         AcceptsReturn="True" TextWrapping="Wrap"
                                          VerticalScrollBarVisibility="Auto" Height="200"
                                          TextChanged="BodyBox_TextChanged" />
                                 <ScrollViewer x:Name="PreviewScroll" MaxHeight="200"
                                               Visibility="Collapsed" Margin="0,4,0,0">
                                     <TextBlock x:Name="PreviewBlock" TextWrapping="Wrap" />
                                 </ScrollViewer>
-                                <TextBlock Text="Чек-лист" Margin="0,8,0,4" />
-                                <ListBox x:Name="ChecklistBox" MaxHeight="140">
+                                <TextBlock Text="Чек-лист" FontSize="12"
+                                           Foreground="{StaticResource FilesTxt2Brush}"
+                                           Margin="0,12,0,4" />
+                                <ListBox x:Name="ChecklistBox" MaxHeight="140"
+                                         Background="Transparent" BorderThickness="0">
                                     <ListBox.ItemTemplate>
                                         <DataTemplate>
                                             <StackPanel Orientation="Horizontal" Margin="0,2">
-                                                <CheckBox IsChecked="{Binding IsChecked}"
+                                                <CheckBox Style="{StaticResource MaterialCheckBox}"
+                                                          IsChecked="{Binding IsChecked}"
                                                           Tag="{Binding Id}"
                                                           Checked="ChecklistItem_Toggled"
                                                           Unchecked="ChecklistItem_Toggled"
                                                           VerticalAlignment="Center" />
-                                                <TextBlock Text="{Binding Text}" Margin="6,0"
-                                                           VerticalAlignment="Center" MaxWidth="320"
-                                                           TextTrimming="CharacterEllipsis" />
-                                                <Button Content="×" Tag="{Binding Id}" Width="24"
+                                                <TextBlock Margin="8,0" VerticalAlignment="Center"
+                                                           MaxWidth="320"
+                                                           TextTrimming="CharacterEllipsis">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Text" Value="{Binding Text}" />
+                                                            <Setter Property="FontSize" Value="13" />
+                                                            <Setter Property="Foreground" Value="{StaticResource FilesTxtBrush}" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsChecked}" Value="True">
+                                                                    <Setter Property="TextDecorations" Value="Strikethrough" />
+                                                                    <Setter Property="Foreground" Value="{StaticResource FilesTxt3Brush}" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                                <Button Content="×" Tag="{Binding Id}" Width="28"
+                                                        Style="{StaticResource FilesSmallDanger}"
+                                                        Margin="8,0,0,0"
                                                         Click="DeleteChecklistItem_Click" />
                                             </StackPanel>
                                         </DataTemplate>
                                     </ListBox.ItemTemplate>
                                 </ListBox>
                                 <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-                                    <TextBox x:Name="NewItemBox" Width="280" />
+                                    <TextBox x:Name="NewItemBox" Width="280"
+                                             Style="{StaticResource FilesInputField}" />
                                     <Button Content="В список" Margin="8,0,0,0"
+                                            Style="{StaticResource FilesBtnDefault}"
                                             Click="AddChecklistItem_Click" />
                                 </StackPanel>
-                                <TextBlock Text="Вложения" Margin="0,8,0,4" />
-                                <ListBox x:Name="AttachmentsBox" MaxHeight="100">
+                                <TextBlock Text="Вложения" FontSize="12"
+                                           Foreground="{StaticResource FilesTxt2Brush}"
+                                           Margin="0,12,0,4" />
+                                <ListBox x:Name="AttachmentsBox" MaxHeight="100"
+                                         Background="Transparent" BorderThickness="0">
                                     <ListBox.ItemTemplate>
                                         <DataTemplate>
                                             <StackPanel Orientation="Horizontal" Margin="0,2">
-                                                <TextBlock Text="{Binding FileName}" MaxWidth="200"
+                                                <TextBlock Text="📎" FontSize="14"
                                                            VerticalAlignment="Center"
+                                                           Foreground="{StaticResource FilesTxt2Brush}" />
+                                                <TextBlock Text="{Binding FileName}" MaxWidth="200"
+                                                           FontSize="13"
+                                                           Foreground="{StaticResource FilesTxtBrush}"
+                                                           VerticalAlignment="Center" Margin="8,0,0,0"
                                                            TextTrimming="CharacterEllipsis" />
                                                 <TextBlock Text="{Binding SizeBytes, StringFormat='{}{0} байт'}"
-                                                           Opacity="0.6" FontSize="11" Margin="6,0"
+                                                           Foreground="{StaticResource FilesTxt3Brush}"
+                                                           FontSize="11" Margin="6,0"
                                                            VerticalAlignment="Center" />
-                                                <Button Content="Открыть" Tag="{Binding Id}" Width="60"
+                                                <Button Content="Открыть" Tag="{Binding Id}" Width="70"
+                                                        Style="{StaticResource FilesBtnDefault}"
                                                         Click="OpenAttachment_Click" />
-                                                <Button Content="Скачать" Tag="{Binding Id}" Width="60" Margin="4,0,0,0"
+                                                <Button Content="Скачать" Tag="{Binding Id}" Width="70"
+                                                        Margin="6,0,0,0"
+                                                        Style="{StaticResource FilesBtnDefault}"
                                                         Click="DownloadAttachment_Click" />
-                                                <Button Content="×" Tag="{Binding Id}" Width="24" Margin="4,0,0,0"
+                                                <Button Content="×" Tag="{Binding Id}" Width="28"
+                                                        Margin="6,0,0,0"
+                                                        Style="{StaticResource FilesSmallDanger}"
                                                         Click="DeleteAttachment_Click" />
                                             </StackPanel>
                                         </DataTemplate>
                                     </ListBox.ItemTemplate>
                                 </ListBox>
-                                <Button Content="Добавить файл…" Width="120" Margin="0,4,0,0"
+                                <Button Content="Добавить файл…" Margin="0,4,0,0"
+                                        Style="{StaticResource FilesBtnDefault}"
                                         HorizontalAlignment="Left" Click="AddAttachment_Click" />
-                                <Button x:Name="SaveButton" Content="Сохранить" Width="100"
-                                        Margin="0,8,0,0" HorizontalAlignment="Left"
-                                        Click="SaveButton_Click" />
                             </StackPanel>
                         </ScrollViewer>
                     </DockPanel>
@@ -348,77 +509,249 @@
                            Visibility="Collapsed" />
                 </Grid>
             </TabItem>
-            <TabItem Header="Настройки">
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <StackPanel Margin="12">
-                        <TextBlock Text="Синхронизация" FontWeight="Bold" />
-                        <Grid Margin="0,4,0,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="90" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition />
-                                <RowDefinition />
-                                <RowDefinition />
-                                <RowDefinition />
-                            </Grid.RowDefinitions>
-                            <TextBlock Text="Узел" VerticalAlignment="Center" />
-                            <TextBox x:Name="SyncHostBox" Text="127.0.0.1" Grid.Column="1" Margin="0,2" />
-                            <TextBlock Text="Порт" Grid.Row="1" VerticalAlignment="Center" />
-                            <TextBox x:Name="SyncPortBox" Text="48211" Grid.Row="1" Grid.Column="1" Margin="0,2" />
-                            <TextBlock Text="Токен" Grid.Row="2" VerticalAlignment="Center" />
-                            <TextBox x:Name="SyncTokenBox" Grid.Row="2" Grid.Column="1" Margin="0,2" />
-                            <TextBlock Text="Имя" Grid.Row="3" VerticalAlignment="Center" />
-                            <TextBox x:Name="SyncDeviceBox" Grid.Row="3" Grid.Column="1" Margin="0,2" />
-                        </Grid>
-                        <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
-                            <Button x:Name="SyncGoButton" Content="Синхронизировать" Width="140"
-                                    Click="SyncGoButton_Click" />
-                            <Button x:Name="SyncCancelButton" Content="Отмена" Width="90" Margin="8,0,0,0"
-                                    IsEnabled="False" Click="SyncCancelButton_Click" />
-                        </StackPanel>
-                        <TextBlock x:Name="SyncStateText" Text="Не подключено" Margin="0,4,0,0"
-                                   TextWrapping="Wrap" Opacity="0.8" />
-                        <TextBlock Text="Сопряжение" FontWeight="Bold" Margin="0,12,0,4" />
-                        <TextBlock Text="Покажите QR-код на телефоне в приложении SyncNote."
-                                   TextWrapping="Wrap" Margin="0,0,0,4" />
-                        <Image x:Name="PairQrImage" Width="200" Height="200" Margin="0,0,0,4"
-                               HorizontalAlignment="Left" />
-                        <TextBlock x:Name="PairTokenInfo" TextWrapping="Wrap" Opacity="0.7" />
-                        <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
-                            <Button Content="Новый код" Width="110" Click="PairNewToken_Click" />
-                            <Button x:Name="P2pButton" Content="Создать Wi-Fi Direct группу" Width="220"
-                                    Margin="8,0,0,0" Click="P2pButton_Click" />
-                            <Button x:Name="BtButton" Content="Принимать по Bluetooth" Width="180"
-                                    Margin="8,0,0,0" Click="BtButton_Click" />
-                        </StackPanel>
-                        <TextBlock x:Name="PairServerInfo" TextWrapping="Wrap" Margin="0,4,0,0" />
-                        <TextBlock x:Name="P2pInfo" TextWrapping="Wrap" Opacity="0.7" />
-                        <TextBlock x:Name="BtInfo" TextWrapping="Wrap" Opacity="0.7" />
-                        <TextBlock Text="Хранилище" FontWeight="Bold" Margin="0,12,0,0" />
-                        <TextBlock x:Name="StorageInfo" Margin="0,4,0,0" TextWrapping="Wrap" />
-                        <TextBlock Text="Доверенные устройства" FontWeight="Bold" Margin="0,12,0,4" />
-                        <ListBox x:Name="TrustedBox" MaxHeight="120">
-                            <ListBox.ItemTemplate>
-                                <DataTemplate>
-                                    <StackPanel Orientation="Horizontal" Margin="0,2">
-                                        <StackPanel Width="300">
-                                            <TextBlock Text="{Binding Name}" FontWeight="Bold"
-                                                       TextTrimming="CharacterEllipsis" />
-                                            <TextBlock Text="{Binding DeviceId}" Opacity="0.6" FontSize="11"
-                                                       TextTrimming="CharacterEllipsis" />
-                                        </StackPanel>
-                                        <Button Content="Отозвать" Tag="{Binding DeviceId}"
-                                                Margin="8,0,0,0" VerticalAlignment="Center"
-                                                Click="Untrust_Click" />
-                                    </StackPanel>
-                                </DataTemplate>
-                            </ListBox.ItemTemplate>
-                        </ListBox>
-                        <TextBlock Text="Заметки в базе" FontWeight="Bold" Margin="0,12,0,4" />
-                        <TextBlock Text="Управление заметками — во вкладке «Заметки» (галочки, «Выбрать все»)."
-                                   TextWrapping="Wrap" Opacity="0.7" />
+            <TabItem Header="Настройки" FontFamily="Segoe UI">
+                <ScrollViewer VerticalScrollBarVisibility="Auto"
+                              Background="{StaticResource FilesPanel2Brush}">
+                    <StackPanel Margin="16">
+                        <Border Style="{StaticResource CardSection}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SectionTitle}"
+                                           Text="🔄 Синхронизация" />
+                                <Grid Margin="0,4,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="90" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition />
+                                        <RowDefinition />
+                                        <RowDefinition />
+                                        <RowDefinition />
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Text="Узел" FontSize="13"
+                                               Foreground="{StaticResource FilesTxt2Brush}"
+                                               VerticalAlignment="Center" />
+                                    <TextBox x:Name="SyncHostBox" Text="127.0.0.1" Grid.Column="1"
+                                             Margin="0,2" Style="{StaticResource FilesInputField}" />
+                                    <TextBlock Text="Порт" Grid.Row="1" FontSize="13"
+                                               Foreground="{StaticResource FilesTxt2Brush}"
+                                               VerticalAlignment="Center" />
+                                    <TextBox x:Name="SyncPortBox" Text="48211" Grid.Row="1" Grid.Column="1"
+                                             Margin="0,2" Style="{StaticResource FilesInputField}" />
+                                    <TextBlock Text="Токен" Grid.Row="2" FontSize="13"
+                                               Foreground="{StaticResource FilesTxt2Brush}"
+                                               VerticalAlignment="Center" />
+                                    <TextBox x:Name="SyncTokenBox" Grid.Row="2" Grid.Column="1"
+                                             Margin="0,2" Style="{StaticResource FilesInputField}" />
+                                    <TextBlock Text="Имя" Grid.Row="3" FontSize="13"
+                                               Foreground="{StaticResource FilesTxt2Brush}"
+                                               VerticalAlignment="Center" />
+                                    <TextBox x:Name="SyncDeviceBox" Grid.Row="3" Grid.Column="1"
+                                             Margin="0,2" Style="{StaticResource FilesInputField}" />
+                                </Grid>
+                                <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                                    <Button x:Name="SyncGoButton" Content="Синхронизировать"
+                                            Style="{StaticResource FilesBtnPrimary}"
+                                            Click="SyncGoButton_Click" />
+                                    <Button x:Name="SyncCancelButton" Content="Отмена" Margin="8,0,0,0"
+                                            Style="{StaticResource FilesBtnDefault}"
+                                            IsEnabled="False" Click="SyncCancelButton_Click" />
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                    <Ellipse x:Name="SyncLed" Style="{StaticResource StatusLed}"
+                                             VerticalAlignment="Center" />
+                                    <TextBlock x:Name="SyncStateText" Text="Не подключено"
+                                               FontSize="13"
+                                               Foreground="{StaticResource FilesTxt2Brush}"
+                                               TextWrapping="Wrap" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{StaticResource CardSection}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SectionTitle}"
+                                           Text="📱 Сопряжение" />
+                                <TextBlock FontSize="13"
+                                           Foreground="{StaticResource FilesTxt2Brush}"
+                                           TextWrapping="Wrap" Margin="0,0,0,8"
+                                           Text="Покажите QR-код на телефоне в приложении SyncNote." />
+                                <StackPanel Orientation="Horizontal" Margin="0,2">
+                                    <Border Width="22" Height="22" CornerRadius="11"
+                                            Background="{StaticResource FilesAccentBrush}"
+                                            VerticalAlignment="Center">
+                                        <TextBlock Text="1" Foreground="White" FontSize="12"
+                                                   FontWeight="Bold" HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center" />
+                                    </Border>
+                                    <TextBlock Margin="8,0,0,0" VerticalAlignment="Center"
+                                               FontSize="13"
+                                               Foreground="{StaticResource FilesTxtBrush}"
+                                               Text="Откройте SyncNote на телефоне" />
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                    <Border Width="22" Height="22" CornerRadius="11"
+                                            Background="{StaticResource FilesAccentBrush}"
+                                            VerticalAlignment="Center">
+                                        <TextBlock Text="2" Foreground="White" FontSize="12"
+                                                   FontWeight="Bold" HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center" />
+                                    </Border>
+                                    <TextBlock Margin="8,0,0,0" VerticalAlignment="Center"
+                                               FontSize="13"
+                                               Foreground="{StaticResource FilesTxtBrush}"
+                                               Text="Нажмите «Сканировать» и наведите на код ниже" />
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                    <Border Width="22" Height="22" CornerRadius="11"
+                                            Background="{StaticResource FilesAccentBrush}"
+                                            VerticalAlignment="Center">
+                                        <TextBlock Text="3" Foreground="White" FontSize="12"
+                                                   FontWeight="Bold" HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center" />
+                                    </Border>
+                                    <TextBlock Margin="8,0,0,0" VerticalAlignment="Center"
+                                               FontSize="13"
+                                               Foreground="{StaticResource FilesTxtBrush}"
+                                               Text="Дождитесь «Устройство сопряжено»" />
+                                </StackPanel>
+                                <Image x:Name="PairQrImage" Width="200" Height="200" Margin="0,12"
+                                       HorizontalAlignment="Center" />
+                                <TextBlock x:Name="PairTokenInfo" TextWrapping="Wrap"
+                                           HorizontalAlignment="Center" FontSize="12"
+                                           Foreground="{StaticResource FilesTxt2Brush}" />
+                                <StackPanel Orientation="Horizontal" Margin="0,8,0,0"
+                                            HorizontalAlignment="Center">
+                                    <Button Content="Новый код" Style="{StaticResource FilesBtnDefault}"
+                                            Click="PairNewToken_Click" />
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                    <Button x:Name="P2pButton" Content="Создать Wi-Fi Direct группу"
+                                            Style="{StaticResource FilesBtnDefault}"
+                                            Click="P2pButton_Click" />
+                                    <Button x:Name="BtButton" Content="Принимать по Bluetooth"
+                                            Margin="8,0,0,0"
+                                            Style="{StaticResource FilesBtnDefault}"
+                                            Click="BtButton_Click" />
+                                </StackPanel>
+                                <TextBlock x:Name="PairServerInfo" FontSize="12"
+                                           Foreground="{StaticResource FilesTxt2Brush}"
+                                           TextWrapping="Wrap" Margin="0,8,0,0" />
+                                <TextBlock x:Name="P2pInfo" FontSize="12"
+                                           Foreground="{StaticResource FilesTxt2Brush}"
+                                           TextWrapping="Wrap" />
+                                <TextBlock x:Name="BtInfo" FontSize="12"
+                                           Foreground="{StaticResource FilesTxt2Brush}"
+                                           TextWrapping="Wrap" />
+                                <TextBlock Text="Wi-Fi Direct и Bluetooth на реальном железе ещё не проверены (T6/T7)."
+                                           FontSize="11"
+                                           Foreground="{StaticResource FilesTxt3Brush}"
+                                           TextWrapping="Wrap" Margin="0,4,0,0" />
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{StaticResource CardSection}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SectionTitle}"
+                                           Text="🔒 Доверенные устройства" />
+                                <ListBox x:Name="TrustedBox" MaxHeight="140"
+                                         Style="{StaticResource FilesList}"
+                                         ItemContainerStyle="{StaticResource FilesListItem}">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal" Margin="0,2">
+                                                <StackPanel Width="300">
+                                                    <TextBlock Text="{Binding Name}" FontWeight="Bold"
+                                                               FontSize="13"
+                                                               Foreground="{StaticResource FilesTxtBrush}"
+                                                               TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock Text="{Binding DeviceId}"
+                                                               FontFamily="Consolas" FontSize="11"
+                                                               Foreground="{StaticResource FilesTxt2Brush}"
+                                                               TextTrimming="CharacterEllipsis" />
+                                                </StackPanel>
+                                                <Button Content="Отозвать" Tag="{Binding DeviceId}"
+                                                        Style="{StaticResource FilesSmallDanger}"
+                                                        Margin="8,0,0,0" VerticalAlignment="Center"
+                                                        Click="Untrust_Click" />
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{StaticResource CardSection}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SectionTitle}"
+                                           Text="💾 Хранилище" />
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="130" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition />
+                                        <RowDefinition />
+                                        <RowDefinition />
+                                        <RowDefinition />
+                                        <RowDefinition />
+                                        <RowDefinition />
+                                        <RowDefinition />
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Text="Заметок" FontSize="13"
+                                               Foreground="{StaticResource FilesTxt2Brush}"
+                                               VerticalAlignment="Center" />
+                                    <TextBlock x:Name="StatNotesValue" Grid.Column="1" Margin="0,2"
+                                               FontSize="13" FontWeight="SemiBold"
+                                               Foreground="{StaticResource FilesTxtBrush}" />
+                                    <TextBlock Text="Файлов" Grid.Row="1" FontSize="13"
+                                               Foreground="{StaticResource FilesTxt2Brush}"
+                                               VerticalAlignment="Center" />
+                                    <TextBlock x:Name="StatFilesValue" Grid.Row="1" Grid.Column="1"
+                                               Margin="0,2" FontSize="13" FontWeight="SemiBold"
+                                               Foreground="{StaticResource FilesTxtBrush}" />
+                                    <TextBlock Text="База" Grid.Row="2" FontSize="13"
+                                               Foreground="{StaticResource FilesTxt2Brush}"
+                                               VerticalAlignment="Center" />
+                                    <TextBlock x:Name="StatDbValue" Grid.Row="2" Grid.Column="1"
+                                               Margin="0,2" FontSize="13" FontWeight="SemiBold"
+                                               Foreground="{StaticResource FilesTxtBrush}" />
+                                    <TextBlock Text="Устройство" Grid.Row="3" FontSize="13"
+                                               Foreground="{StaticResource FilesTxt2Brush}"
+                                               VerticalAlignment="Center" />
+                                    <TextBlock x:Name="StatDeviceValue" Grid.Row="3" Grid.Column="1"
+                                               Margin="0,2" FontSize="13" FontWeight="SemiBold"
+                                               Foreground="{StaticResource FilesTxtBrush}" />
+                                    <TextBlock Text="Сеть" Grid.Row="4" FontSize="13"
+                                               Foreground="{StaticResource FilesTxt2Brush}"
+                                               VerticalAlignment="Center" />
+                                    <TextBlock x:Name="StatPortValue" Grid.Row="4" Grid.Column="1"
+                                               Margin="0,2" FontSize="13" FontWeight="SemiBold"
+                                               Foreground="{StaticResource FilesTxtBrush}" />
+                                    <TextBlock Text="Папка БД" Grid.Row="5" FontSize="13"
+                                               Foreground="{StaticResource FilesTxt2Brush}"
+                                               VerticalAlignment="Center" />
+                                    <TextBlock x:Name="DbPathText" Grid.Row="5" Grid.Column="1"
+                                               Margin="0,2" FontFamily="Consolas" FontSize="11"
+                                               Foreground="{StaticResource FilesTxt2Brush}"
+                                               TextWrapping="Wrap" />
+                                    <TextBlock Grid.Row="6" Grid.Column="1" Margin="0,2">
+                                        <Hyperlink Click="DbPath_Click"
+                                                   Foreground="{StaticResource FilesAccentBrush}">
+                                            Открыть папку
+                                        </Hyperlink>
+                                    </TextBlock>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{StaticResource CardSection}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SectionTitle}"
+                                           Text="🧹 Заметки в базе" />
+                                <TextBlock Text="Управление заметками — во вкладке «Заметки» (галочки, «Выбрать все»)."
+                                           FontSize="13"
+                                           Foreground="{StaticResource FilesTxt2Brush}"
+                                           TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>

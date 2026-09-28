@@ -63,6 +63,8 @@ public partial class MainWindow : Window
             _store.Dispose();
         };
         RefreshList();
+        // QR для сопряжения генерируем сразу, чтобы вкладка «Настройки» была готова.
+        IssuePairToken();
         // Подтягиваем изменения с телефона без нажатий: тихое обновление списка.
         var timer = new System.Windows.Threading.DispatcherTimer
         {
@@ -74,12 +76,27 @@ public partial class MainWindow : Window
 
     private bool _suppressSelection;
     private bool _updatingSelectAll;
+    private bool _loadingEditor;
+    private void SetDirty(bool v)
+    {
+        SaveButton.IsEnabled = v;
+        DirtyHint.Visibility = v ? Visibility.Visible : Visibility.Collapsed;
+    }
     private List<SelectableNote> _notesWrap = new();
     private int _knownTrustedCount = -1;
 
-    private sealed class SelectableNote(Note note, bool selected) : System.ComponentModel.INotifyPropertyChanged
+    private sealed class SelectableNote(
+        Note note, bool selected, bool hasChecklist, bool hasAttachments,
+        bool isConflict, bool isModified) : System.ComponentModel.INotifyPropertyChanged
     {
         public Note Note { get; } = note;
+        // Только для отображения в списке (бейджи/индикаторы), логика не меняется.
+        public bool HasChecklist { get; } = hasChecklist;
+        public bool HasAttachments { get; } = hasAttachments;
+        public bool IsConflict { get; } = isConflict;
+        public bool IsModified { get; } = isModified;
+        public string SyncBadgeText =>
+            IsConflict ? "⚠ конфликт" : IsModified ? "● изменено" : "✓ синхр.";
         private bool _selected = selected;
         public bool IsSelected
         {
@@ -102,7 +119,13 @@ public partial class MainWindow : Window
         var selectedId = CurrentNote()?.Id;
         var notes = _store.Search(SearchBox.Text);
         var checkedIds = _notesWrap.Where(s => s.IsSelected).Select(s => s.Note.Id).ToHashSet();
-        _notesWrap = notes.Select(n => new SelectableNote(n, checkedIds.Contains(n.Id))).ToList();
+        var pairs = Conflicts.FindPairs(_store);
+        var conflictIds = pairs.SelectMany(p => new[] { p.Original.Id, p.Copy.Id }).ToHashSet();
+        _notesWrap = notes.Select(n => new SelectableNote(n, checkedIds.Contains(n.Id),
+            _store.GetChecklist(n.Id).Count > 0,
+            _store.GetAttachments(n.Id).Count > 0,
+            conflictIds.Contains(n.Id),
+            n.Rev > _store.GetSyncRev(n.Id))).ToList();
         foreach (var s in _notesWrap)
             s.PropertyChanged += (_, _) => UpdateCheckedButton();
         var keep = selectedId is not null
@@ -120,7 +143,7 @@ public partial class MainWindow : Window
         {
             _suppressSelection = false;
         }
-        int conflicts = Conflicts.FindPairs(_store).Count;
+        int conflicts = pairs.Count;
         ConflictsButton.Content = $"Конфликты ({conflicts})";
         ConflictsButton.Visibility = conflicts > 0 ? Visibility.Visible : Visibility.Collapsed;
         UpdateCheckedButton();
@@ -209,13 +232,14 @@ public partial class MainWindow : Window
         }
         catch { }
         long dbBytes = 0;
-        try { dbBytes = new System.IO.FileInfo(SqliteNoteStore.DefaultPath).Length; } catch { }
-        StorageInfo.Text = $"Заметок: {notes.Count}\n" +
-            $"Файлов: {filesCount} ({filesBytes / 1024} КБ)\n" +
-            $"База: {dbBytes / 1024} КБ\n" +
-            $"Путь: {SqliteNoteStore.DefaultPath}\n" +
-            $"Устройство: {_store.DeviceId[..Math.Min(8, _store.DeviceId.Length)]}…\n" +
-            $"Принимаю подключения: {SyncPort}";
+        try { dbBytes = new System.IO.FileInfo(DbPath()).Length; } catch { }
+        // Метрики раскладываем по отдельным полям карточки (те же данные, другой вид).
+        StatNotesValue.Text = notes.Count.ToString();
+        StatFilesValue.Text = $"{filesCount} ({filesBytes / 1024} КБ)";
+        StatDbValue.Text = $"{dbBytes / 1024} КБ";
+        StatDeviceValue.Text = $"{_store.DeviceId[..Math.Min(8, _store.DeviceId.Length)]}…";
+        StatPortValue.Text = $"Порт {SyncPort} (принимаю подключения)";
+        DbPathText.Text = DbPath();
         TrustedBox.ItemsSource = _pairing.ListTrusted();
         // Новое сопряжение завершено — возвращаемся к заметкам.
         int trusted = _pairing.ListTrusted().Count;
@@ -225,6 +249,22 @@ public partial class MainWindow : Window
             MainTabs.SelectedIndex = 0;
         }
         _knownTrustedCount = trusted;
+    }
+
+    private void DbPath_Click(object sender, RoutedEventArgs e)
+    {
+        // Открыть папку с базой в проводнике (только просмотр пути).
+        try
+        {
+            var dir = System.IO.Path.GetDirectoryName(DbPath());
+            if (!string.IsNullOrEmpty(dir))
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = dir,
+                    UseShellExecute = true,
+                });
+        }
+        catch { }
     }
 
     private void Untrust_Click(object sender, RoutedEventArgs e)
@@ -249,8 +289,23 @@ public partial class MainWindow : Window
         {
             SyncStateText.Text = text;
             ConnectionStatus.Text = text;
+            // LED-индикатор — чисто визуальное отображение того же текста.
+            SyncLed.Fill = text.StartsWith("Готово")
+                ? SyncOkBrush
+                : text.StartsWith("Ошибка")
+                    ? SyncErrBrush
+                    : text.Contains('…') ? SyncBusyBrush : SyncIdleBrush;
         });
     }
+
+    private static readonly System.Windows.Media.SolidColorBrush SyncOkBrush =
+        new(System.Windows.Media.Color.FromRgb(0x2E, 0x9E, 0x4F));
+    private static readonly System.Windows.Media.SolidColorBrush SyncBusyBrush =
+        new(System.Windows.Media.Color.FromRgb(0xE8, 0xA3, 0x17));
+    private static readonly System.Windows.Media.SolidColorBrush SyncErrBrush =
+        new(System.Windows.Media.Color.FromRgb(0xD6, 0x3B, 0x3B));
+    private static readonly System.Windows.Media.SolidColorBrush SyncIdleBrush =
+        new(System.Windows.Media.Color.FromRgb(0x9A, 0x9A, 0xA2));
 
     private async void SyncGoButton_Click(object sender, RoutedEventArgs e)
     {
@@ -447,15 +502,25 @@ public partial class MainWindow : Window
         {
             EmptyHint.Visibility = Visibility.Collapsed;
             EditorPanel.Visibility = Visibility.Visible;
-            TitleBox.Text = note.Title;
-            BodyBox.Text = note.Body;
+            _loadingEditor = true;
+            try
+            {
+                TitleBox.Text = note.Title;
+                BodyBox.Text = note.Body;
+            }
+            finally
+            {
+                _loadingEditor = false;
+            }
             RefreshChecklist();
             RefreshAttachments();
+            SetDirty(false);
         }
         else
         {
             EmptyHint.Visibility = Visibility.Visible;
             EditorPanel.Visibility = Visibility.Collapsed;
+            SetDirty(false);
         }
     }
 
@@ -468,9 +533,13 @@ public partial class MainWindow : Window
         TitleBox.SelectAll();
     }
 
-    private void TitleBox_TextChanged(object sender, TextChangedEventArgs e) =>
+    private void TitleBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
         TitleWatermark.Visibility = string.IsNullOrEmpty(TitleBox.Text)
             ? Visibility.Visible : Visibility.Collapsed;
+        if (!_loadingEditor)
+            SetDirty(true);
+    }
 
     private void DeleteButton_Click(object sender, RoutedEventArgs e)
     {
@@ -491,6 +560,7 @@ public partial class MainWindow : Window
             _store.Update(note);
             RefreshList();
             SelectNote(note.Id);
+            SetDirty(false);
         }
     }
 
@@ -542,6 +612,8 @@ public partial class MainWindow : Window
     {
         if (PreviewCheck.IsChecked == true)
             RenderPreview();
+        if (!_loadingEditor)
+            SetDirty(true);
     }
 
     private void PreviewCheck_Toggled(object sender, RoutedEventArgs e)
