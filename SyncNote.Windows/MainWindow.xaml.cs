@@ -215,10 +215,21 @@ public partial class MainWindow : Window
 
     private async void SyncGoButton_Click(object sender, RoutedEventArgs e)
     {
+        // Пустые поля — значения по умолчанию, а не ошибка.
+        if (string.IsNullOrWhiteSpace(SyncHostBox.Text))
+            SyncHostBox.Text = "127.0.0.1";
         if (!int.TryParse(SyncPortBox.Text, out int port) || port is < 1 or > 65535)
         {
-            SetSyncState("Ошибка: некорректный порт.");
-            return;
+            if (string.IsNullOrWhiteSpace(SyncPortBox.Text))
+            {
+                SyncPortBox.Text = SyncPort.ToString();
+                port = SyncPort;
+            }
+            else
+            {
+                SetSyncState("Ошибка: некорректный порт.");
+                return;
+            }
         }
         SyncGoButton.IsEnabled = false;
         SyncCancelButton.IsEnabled = true;
