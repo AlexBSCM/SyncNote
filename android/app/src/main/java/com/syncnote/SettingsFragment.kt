@@ -1,5 +1,6 @@
 package com.syncnote
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -29,6 +30,12 @@ class SettingsFragment : Fragment() {
             SyncAuto.clearProfile(requireContext())
             refreshInfo()
             Toast.makeText(requireContext(), "Узел забыт.", Toast.LENGTH_SHORT).show()
+        }
+        view.findViewById<Button>(R.id.openSyncButton).setOnClickListener {
+            startActivity(Intent(requireContext(), SyncActivity::class.java))
+        }
+        view.findViewById<Button>(R.id.openConflictsButton).setOnClickListener {
+            startActivity(Intent(requireContext(), ConflictsActivity::class.java))
         }
         refresh()
     }

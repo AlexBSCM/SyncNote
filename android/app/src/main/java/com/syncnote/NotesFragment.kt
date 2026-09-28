@@ -73,12 +73,6 @@ class NotesFragment : Fragment() {
                 .setNegativeButton("Отмена", null)
                 .show()
         }
-        view.findViewById<Button>(R.id.syncButton).setOnClickListener {
-            startActivity(Intent(requireContext(), SyncActivity::class.java))
-        }
-        view.findViewById<Button>(R.id.conflictsButton).setOnClickListener {
-            startActivity(Intent(requireContext(), ConflictsActivity::class.java))
-        }
     }
 
     override fun onResume() {
