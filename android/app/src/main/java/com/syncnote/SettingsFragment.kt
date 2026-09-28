@@ -99,8 +99,8 @@ class SettingsFragment : Fragment() {
 
         class Holder(parent: ViewGroup) : RecyclerView.ViewHolder(
             LayoutInflater.from(parent.context)
-                .inflate(android.R.layout.simple_list_item_multiple_choice, parent, false)) {
-            val box: CheckBox = itemView.findViewById(android.R.id.text1)
+                .inflate(R.layout.item_check, parent, false)) {
+            val box: CheckBox = itemView.findViewById(R.id.rowCheck)
         }
 
         fun submit(notes: List<Note>) {
