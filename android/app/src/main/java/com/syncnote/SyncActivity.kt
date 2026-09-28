@@ -8,6 +8,7 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.ListView
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 
 // Экран синхронизации: ручной ввод узла/токена (петля, GO-адрес)
@@ -143,7 +144,7 @@ class SyncActivity : AppCompatActivity(), P2pConnector.Listener {
                 setState("Готово: отправлено ${r.pushed}, получено ${r.pulled}, " +
                     "конфликтов ${r.conflicts}. Узел запомнен.")
                 runOnUiThread {
-                    android.widget.Toast.makeText(this,
+                    Toast.makeText(this,
                         "Синхронизировано: ${r.pushed}↑ ${r.pulled}↓", Toast.LENGTH_SHORT).show()
                     finish()
                 }
