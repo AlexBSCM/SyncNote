@@ -77,6 +77,11 @@ class QrScanActivity : AppCompatActivity() {
                                 .addOnSuccessListener { codes ->
                                     for (c in codes) handle(c.rawValue)
                                 }
+                                .addOnFailureListener { e ->
+                                    android.util.Log.i("SyncNote",
+                                        "scanner error ${e.javaClass.simpleName}: ${e.message}")
+                                    hint("Сканер: ${e.message}")
+                                }
                                 .addOnCompleteListener { image.close() }
                         } catch (_: Exception) {
                             image.close()
