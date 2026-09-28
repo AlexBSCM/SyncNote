@@ -45,27 +45,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:text="Заметки в базе"
-            android:textStyle="bold" />
-
-        <CheckBox
-            android:id="@+id/selectAllBox"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="Выбрать все" />
-
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/allNotesList"
-            android:layout_width="match_parent"
-            android:layout_height="220dp"
-            android:layout_marginTop="4dp" />
-
-        <Button
-            android:id="@+id/deleteSelectedButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="Удалить выбранные" />
+            android:text="Управление заметками — во вкладке «Заметки» (галочки, «Выбрать все»)."
+            android:alpha="0.6" />
     </LinearLayout>
 </ScrollView>

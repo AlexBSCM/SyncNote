@@ -18,6 +18,27 @@
         android:layout_weight="1"
         android:layout_marginTop="8dp" />
 
+    <LinearLayout
+        android:orientation="horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp">
+
+        <CheckBox
+            android:id="@+id/selectAllBox"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:text="Выбрать все" />
+
+        <Button
+            android:id="@+id/deleteCheckedButton"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:text="Удалить выбранные" />
+    </LinearLayout>
+
     <Button
         android:id="@+id/addButton"
         android:layout_width="match_parent"
