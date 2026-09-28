@@ -186,6 +186,14 @@ public partial class MainWindow : Window
             $"Устройство: {_store.DeviceId[..Math.Min(8, _store.DeviceId.Length)]}…\n" +
             $"Принимаю подключения: {SyncPort}";
         TrustedBox.ItemsSource = _pairing.ListTrusted();
+        // Новое сопряжение завершено — возвращаемся к заметкам.
+        int trusted = _pairing.ListTrusted().Count;
+        if (_knownTrustedCount >= 0 && trusted > _knownTrustedCount)
+        {
+            ConnectionStatus.Text = "Устройство сопряжено.";
+            MainTabs.SelectedIndex = 0;
+        }
+        _knownTrustedCount = trusted;
     }
 
     private void Untrust_Click(object sender, RoutedEventArgs e)
