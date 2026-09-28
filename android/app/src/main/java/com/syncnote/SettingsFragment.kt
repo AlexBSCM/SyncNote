@@ -20,6 +20,13 @@ import java.io.File
 class SettingsFragment : Fragment() {
     private lateinit var repo: NotesRepository
 
+    private val syncLauncher = registerForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()
+    ) {
+        // После синхронизации — сразу на вкладку заметок.
+        (activity as? MainActivity)?.selectTab(R.id.tab_notes)
+    }
+
     override fun onCreateView(
         inflater: LayoutInflater, parent: ViewGroup?, state: Bundle?
     ): View = inflater.inflate(R.layout.fragment_settings, parent, false)
@@ -32,7 +39,7 @@ class SettingsFragment : Fragment() {
             Toast.makeText(requireContext(), "Узел забыт.", Toast.LENGTH_SHORT).show()
         }
         view.findViewById<Button>(R.id.openSyncButton).setOnClickListener {
-            startActivity(Intent(requireContext(), SyncActivity::class.java))
+            syncLauncher.launch(Intent(requireContext(), SyncActivity::class.java))
         }
         view.findViewById<Button>(R.id.openConflictsButton).setOnClickListener {
             startActivity(Intent(requireContext(), ConflictsActivity::class.java))

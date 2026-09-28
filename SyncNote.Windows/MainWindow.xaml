@@ -14,7 +14,7 @@
                 </StackPanel>
             </StatusBarItem>
         </StatusBar>
-        <TabControl>
+        <TabControl x:Name="MainTabs">
             <TabItem Header="Заметки">
                 <Grid>
                     <Grid.ColumnDefinitions>

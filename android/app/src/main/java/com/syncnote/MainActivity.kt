@@ -27,4 +27,8 @@ class MainActivity : AppCompatActivity() {
             .replace(R.id.fragmentBox, f)
             .commit()
     }
+
+    fun selectTab(itemId: Int) {
+        findViewById<BottomNavigationView>(R.id.bottomNav).selectedItemId = itemId
+    }
 }

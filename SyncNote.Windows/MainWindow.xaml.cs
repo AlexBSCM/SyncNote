@@ -232,6 +232,7 @@ public partial class MainWindow : Window
             SetSyncState($"Готово: отправлено {result.Pushed}, получено {result.Pulled}, " +
                 $"конфликтов {result.Conflicts}.");
             RefreshList();
+            MainTabs.SelectedIndex = 0;
             if (result.Conflicts > 0)
             {
                 MessageBox.Show(this,
