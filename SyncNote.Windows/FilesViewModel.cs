@@ -100,6 +100,8 @@ public sealed class FilesViewModel : INotifyPropertyChanged
         get => _searchQuery;
         set
         {
+            if (_searchQuery == value)
+                return;
             _searchQuery = value;
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SearchQuery)));
             ApplyFilter();
@@ -111,6 +113,8 @@ public sealed class FilesViewModel : INotifyPropertyChanged
         get => _selectedFile;
         set
         {
+            if (ReferenceEquals(_selectedFile, value))
+                return;
             _selectedFile = value;
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SelectedFile)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasSelection)));
@@ -123,6 +127,9 @@ public sealed class FilesViewModel : INotifyPropertyChanged
     }
 
     public bool HasSelection => _selectedFile is not null;
+
+    public bool IsEmpty => FilesList.Count == 0;
+    public bool HasFiles => FilesList.Count > 0;
 
     public RelayCommand LoadCommand { get; }
     public RelayCommand AddCommand { get; }
@@ -140,6 +147,11 @@ public sealed class FilesViewModel : INotifyPropertyChanged
         SaveAsCommand = new RelayCommand(_ => SaveAs(), _ => HasSelection);
         DeleteCommand = new RelayCommand(_ => Delete(), _ => HasSelection);
         ToggleSpoilerCommand = new RelayCommand(_ => IsSpoilerOpen = !IsSpoilerOpen);
+        FilesList.CollectionChanged += (_, _) =>
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsEmpty)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasFiles)));
+        };
     }
 
     private bool _spoilerOpen;
@@ -148,6 +160,8 @@ public sealed class FilesViewModel : INotifyPropertyChanged
         get => _spoilerOpen;
         set
         {
+            if (_spoilerOpen == value)
+                return;
             _spoilerOpen = value;
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsSpoilerOpen)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SpoilerHeader)));
@@ -197,7 +211,11 @@ public sealed class FilesViewModel : INotifyPropertyChanged
         foreach (var e in Store.GetFiles(includeDeleted: false))
             _all.Add(new FileEntryViewModel(e, Store.GetFileSyncRev(e.Id)));
         ApplyFilter();
-        SelectedFile = _all.FirstOrDefault(v => v.Id == selectedId);
+        // Гард в сеттере SelectedFile обрывает пинг-понг TwoWay-биндинга,
+        // поэтому присваивание здесь безопасно и завершается за один шаг.
+        SelectedFile = selectedId is null
+            ? null
+            : _all.FirstOrDefault(v => v.Id == selectedId);
     }
 
     private void ApplyFilter()

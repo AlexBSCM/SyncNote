@@ -8,8 +8,15 @@ public partial class MainWindow : Window
 {
     public const int SyncPort = 48211;
 
-    private readonly SqliteNoteStore _store = new(SqliteNoteStore.DefaultPath);
-    private readonly PairingService _pairing = PairingService.Open(SqliteNoteStore.DefaultPath);
+    // Путь к БД: для UI-тестов можно переопределить через env SYNCNOTE_DB_PATH
+    // (GetFolderPath(LOCALAPPDATA) игнорирует env LOCALAPPDATA, поэтому
+    // изолировать базу через него нельзя — проверено падением F.6 тестов).
+    private static string DbPath() =>
+        Environment.GetEnvironmentVariable("SYNCNOTE_DB_PATH") is string p &&
+        !string.IsNullOrWhiteSpace(p) ? p : SqliteNoteStore.DefaultPath;
+
+    private readonly SqliteNoteStore _store = new(DbPath());
+    private readonly PairingService _pairing = PairingService.Open(DbPath());
     private readonly SyncServer _server;
     private readonly CancellationTokenSource _serverCts = new();
     private readonly Task _serverTask;
@@ -35,8 +42,13 @@ public partial class MainWindow : Window
         _filesVm = new FilesViewModel(_store);
         FilesTab.DataContext = _filesVm;
         ApplyFilesFlag();
-        MainTabs.SelectionChanged += (_, _) =>
+        MainTabs.SelectionChanged += (_, e) =>
         {
+            // SelectionChanged всплывает от вложенных ListBox (выбор файла
+            // тоже прилетает сюда): реагируем только на сам TabControl,
+            // иначе Refresh() зацикливается в StackOverflow.
+            if (!ReferenceEquals(e.OriginalSource, MainTabs))
+                return;
             if (MainTabs.SelectedItem == FilesTab && FeatureFlags.EnableSeparateFiles)
                 _filesVm.Refresh();
         };

@@ -141,6 +141,9 @@
                 </Grid>
             </TabItem>
             <TabItem Header="Файлы" x:Name="FilesTab">
+                <TabItem.Resources>
+                    <BooleanToVisibilityConverter x:Key="BoolToVis" />
+                </TabItem.Resources>
                 <Grid>
                 <Grid x:Name="FilesContent">
                     <Grid.ColumnDefinitions>
@@ -155,9 +158,11 @@
                                     Command="{Binding AddCommand}" />
                         </StackPanel>
                         <TextBlock x:Name="FilesEmptyHint" Text="Файлов пока нет."
-                                   Opacity="0.6" Margin="0,8,0,0" />
+                                   Opacity="0.6" Margin="0,8,0,0"
+                                   Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVis}}" />
                         <ListBox ItemsSource="{Binding FilesList}"
-                                 SelectedItem="{Binding SelectedFile, Mode=TwoWay}">
+                                 SelectedItem="{Binding SelectedFile, Mode=TwoWay}"
+                                 Visibility="{Binding HasFiles, Converter={StaticResource BoolToVis}}">
                             <ListBox.ItemContainerStyle>
                                 <Style TargetType="ListBoxItem">
                                     <Setter Property="BorderThickness" Value="3,0,0,0" />
@@ -208,7 +213,10 @@
                                 <TextBlock Text="{Binding SelectedFile.Name}" FontSize="16"
                                            FontWeight="Bold" TextTrimming="CharacterEllipsis" />
                                 <TextBlock Opacity="0.7">
-                                    <Run Text="{Binding SelectedFile.Mime}" />
+                                    <!-- Run.Text по умолчанию TwoWay: на read-only свойствах
+                                         бросает InvalidOperationException прямо в доставку
+                                         PropertyChanged и гасит остальные биндинги. -->
+                                    <Run Text="{Binding SelectedFile.Mime, Mode=OneWay}" />
                                     <Run Text=" • " />
                                     <Run Text="{Binding SelectedFile.FormattedSize, Mode=OneWay}" />
                                 </TextBlock>
