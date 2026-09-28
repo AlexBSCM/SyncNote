@@ -91,10 +91,42 @@ public static class FileIo
         return new FileImportResult(hex, size, hex);
     }
 
+    // Гарантирует наличие байтов контента в хранилище (для ApplyFile):
+    // сверяет sha256, дописывает атомарно через temp, при дедупе — no-op.
+    // Кидает InvalidOperationException, если байтов нет и взять их неоткуда.
+    public static void EnsureBytes(string filesDir, string sha256Hex, Func<string, byte[]?> fileBytes)
+    {
+        var norm = sha256Hex.ToLowerInvariant();
+        if (norm.Length != 64 || !norm.All(Uri.IsHexDigit))
+            throw new ArgumentException($"Некорректный sha256: {sha256Hex}", nameof(sha256Hex));
+        Directory.CreateDirectory(filesDir);
+        var dest = Path.Combine(filesDir, norm);
+        if (File.Exists(dest))
+            return;
+        var bytes = fileBytes(norm)
+            ?? throw new InvalidOperationException($"Нет байтов файла (sha256 {norm}).");
+        using (var sha = SHA256.Create())
+        {
+            var actual = Convert.ToHexString(sha.ComputeHash(bytes)).ToLowerInvariant();
+            if (actual != norm)
+                throw new InvalidOperationException($"sha256 не сошлось для {norm}.");
+        }
+        var tmp = Path.Combine(filesDir, norm + "." + Guid.NewGuid().ToString("N") + ".tmp");
+        try
+        {
+            File.WriteAllBytes(tmp, bytes);
+            File.Move(tmp, dest);
+        }
+        catch
+        {
+            try { File.Delete(tmp); } catch { }
+            throw;
+        }
+    }
+
     // Полный путь к хранимому файлу по хешу. Кидает FileNotFoundException,
     // если физического файла нет (повреждение хранилища — явно, не молча).
-    public static string ResolveStoragePath(string filesDir, string sha256Hex)
-    {
+    public static string ResolveStoragePath(string filesDir, string sha256Hex)    {
         // Нормализация: только hex, без разделителей — защита от path traversal.
         if (sha256Hex.Length != 64 || !sha256Hex.All(Uri.IsHexDigit))
             throw new ArgumentException($"Некорректный sha256: {sha256Hex}", nameof(sha256Hex));

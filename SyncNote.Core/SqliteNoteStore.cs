@@ -5,7 +5,7 @@ namespace SyncNote.Core;
 // SQLite-хранилище (WAL + транзакции на запись). Схема v1:
 // notes(id, rev, title, body, updated_at, author_device, is_deleted),
 // keyvalue(key, value) — schema_version и device_id.
-public sealed class SqliteNoteStore : ISyncStore, IDisposable
+public sealed class SqliteNoteStore : ISyncStore, IFileStore, IDisposable
 {
     private const int SchemaVersion = 7;
     private readonly SqliteConnection _db;
@@ -768,6 +768,310 @@ public sealed class SqliteNoteStore : ISyncStore, IDisposable
         fix.Parameters.AddWithValue("$u", dto.UpdatedAt.ToString("o"));
         fix.Parameters.AddWithValue("$id", dto.Id.ToString("N"));
         fix.ExecuteNonQuery();
+    }
+
+    // ---- Подсистема «Отдельные файлы» (этап F). ----
+    // Независимый путь: методы заметок здесь не вызываются.
+
+    private static void RequireFilesEnabled()
+    {
+        if (!FeatureFlags.EnableSeparateFiles)
+            throw new InvalidOperationException("Подсистема отдельных файлов отключена флагом EnableSeparateFiles.");
+    }
+
+    public IReadOnlyList<FileEntry> GetFiles(bool includeDeleted = false)
+    {
+        using var cmd = _db.CreateCommand();
+        cmd.CommandText = "SELECT id, name, mime, size, sha256, stored_name, rev, updated_at, author_device, is_deleted " +
+            "FROM files " + (includeDeleted ? "" : "WHERE is_deleted = 0 ") + "ORDER BY name;";
+        var result = new List<FileEntry>();
+        using var reader = cmd.ExecuteReader();
+        while (reader.Read())
+        {
+            result.Add(new FileEntry
+            {
+                Id = Guid.Parse(reader.GetString(0)),
+                Name = reader.GetString(1),
+                Mime = reader.GetString(2),
+                SizeBytes = reader.GetInt64(3),
+                Sha256 = reader.GetString(4),
+                StoredName = reader.GetString(5),
+                Rev = reader.GetInt64(6),
+                UpdatedAt = DateTime.Parse(reader.GetString(7),
+                    null, System.Globalization.DateTimeStyles.RoundtripKind),
+                AuthorDeviceId = reader.GetString(8),
+                IsDeleted = reader.GetInt64(9) != 0,
+            });
+        }
+        return result;
+    }
+
+    public FileEntry? TryGetFile(Guid id)
+    {
+        using var cmd = _db.CreateCommand();
+        cmd.CommandText = "SELECT id, name, mime, size, sha256, stored_name, rev, updated_at, author_device, is_deleted " +
+            "FROM files WHERE id = $id;";
+        cmd.Parameters.AddWithValue("$id", id.ToString("N"));
+        using var reader = cmd.ExecuteReader();
+        if (!reader.Read())
+            return null;
+        return new FileEntry
+        {
+            Id = Guid.Parse(reader.GetString(0)),
+            Name = reader.GetString(1),
+            Mime = reader.GetString(2),
+            SizeBytes = reader.GetInt64(3),
+            Sha256 = reader.GetString(4),
+            StoredName = reader.GetString(5),
+            Rev = reader.GetInt64(6),
+            UpdatedAt = DateTime.Parse(reader.GetString(7),
+                null, System.Globalization.DateTimeStyles.RoundtripKind),
+            AuthorDeviceId = reader.GetString(8),
+            IsDeleted = reader.GetInt64(9) != 0,
+        };
+    }
+
+    public FileEntry AddFile(string sourcePath)
+    {
+        RequireFilesEnabled();
+        var imported = FileIo.ImportFromFile(_filesDir, sourcePath);
+        var fileName = Path.GetFileName(sourcePath);
+        var entry = new FileEntry
+        {
+            Name = fileName,
+            Mime = AttachmentIo.MimeByExtension(fileName),
+            SizeBytes = imported.SizeBytes,
+            Sha256 = imported.Sha256Hex,
+            StoredName = imported.StoredName,
+            Rev = 1,
+            UpdatedAt = DateTime.UtcNow,
+            AuthorDeviceId = _deviceId,
+        };
+        using var tx = _db.BeginTransaction();
+        using var cmd = _db.CreateCommand();
+        cmd.Transaction = (SqliteTransaction)tx;
+        cmd.CommandText = "INSERT INTO files(id, name, mime, size, sha256, stored_name, rev, updated_at, author_device, is_deleted) " +
+            "VALUES($id, $n, $m, $s, $h, $sn, 1, $u, $d, 0);";
+        cmd.Parameters.AddWithValue("$id", entry.Id.ToString("N"));
+        cmd.Parameters.AddWithValue("$n", entry.Name);
+        cmd.Parameters.AddWithValue("$m", entry.Mime);
+        cmd.Parameters.AddWithValue("$s", entry.SizeBytes);
+        cmd.Parameters.AddWithValue("$h", entry.Sha256);
+        cmd.Parameters.AddWithValue("$sn", entry.StoredName);
+        cmd.Parameters.AddWithValue("$u", entry.UpdatedAt.ToString("o"));
+        cmd.Parameters.AddWithValue("$d", entry.AuthorDeviceId);
+        cmd.ExecuteNonQuery();
+        tx.Commit();
+        return entry;
+    }
+
+    public bool DeleteFile(Guid id)
+    {
+        RequireFilesEnabled();
+        using var tx = _db.BeginTransaction();
+        using var cmd = _db.CreateCommand();
+        cmd.Transaction = (SqliteTransaction)tx;
+        cmd.CommandText = "UPDATE files SET is_deleted = 1, rev = rev + 1, updated_at = $u " +
+            "WHERE id = $id AND is_deleted = 0;";
+        cmd.Parameters.AddWithValue("$u", DateTime.UtcNow.ToString("o"));
+        cmd.Parameters.AddWithValue("$id", id.ToString("N"));
+        var rows = cmd.ExecuteNonQuery();
+        tx.Commit();
+        return rows > 0;
+    }
+
+    public long GetFileSyncRev(Guid fileId)
+    {
+        using var cmd = _db.CreateCommand();
+        cmd.CommandText = "SELECT sync_rev FROM file_syncstate WHERE file_id = $f;";
+        cmd.Parameters.AddWithValue("$f", fileId.ToString("N"));
+        var raw = cmd.ExecuteScalar();
+        return raw is long rev ? rev : 0;
+    }
+
+    public void SetFileSyncRev(Guid fileId, long rev)
+    {
+        using var cmd = _db.CreateCommand();
+        cmd.CommandText = "INSERT INTO file_syncstate(file_id, sync_rev) VALUES($f, $r) " +
+            "ON CONFLICT(file_id) DO UPDATE SET sync_rev = excluded.sync_rev;";
+        cmd.Parameters.AddWithValue("$f", fileId.ToString("N"));
+        cmd.Parameters.AddWithValue("$r", rev);
+        cmd.ExecuteNonQuery();
+    }
+
+    public bool HasLiveReferencesToSha(string sha256)
+    {
+        using var cmd = _db.CreateCommand();
+        cmd.CommandText = "SELECT 1 FROM files WHERE sha256 = $h AND is_deleted = 0 LIMIT 1;";
+        cmd.Parameters.AddWithValue("$h", sha256.ToLowerInvariant());
+        return cmd.ExecuteScalar() is not null;
+    }
+
+    public IReadOnlyList<SyncFileDto> ExportFiles()
+    {
+        RequireFilesEnabled();
+        using var cmd = _db.CreateCommand();
+        cmd.CommandText = "SELECT id FROM files;";
+        var ids = new List<Guid>();
+        using (var reader = cmd.ExecuteReader())
+            while (reader.Read())
+                ids.Add(Guid.Parse(reader.GetString(0)));
+        var result = new List<SyncFileDto>();
+        foreach (var id in ids)
+        {
+            var e = TryGetFile(id);
+            if (e is null)
+                continue;
+            result.Add(new SyncFileDto
+            {
+                Id = e.Id,
+                Rev = e.Rev,
+                BaseRev = GetFileSyncRev(id),
+                Name = e.Name,
+                Mime = e.Mime,
+                Size = e.SizeBytes,
+                Sha256 = e.Sha256,
+                UpdatedAt = e.UpdatedAt,
+                Author = e.AuthorDeviceId,
+                IsDeleted = e.IsDeleted,
+            });
+        }
+        return result;
+    }
+
+    public (ApplyResult Result, ConflictInfo? Conflict) ApplyFile(
+        SyncFileDto dto, Func<string, byte[]?> fileBytes)
+    {
+        RequireFilesEnabled();
+        var local = TryGetFile(dto.Id);
+        if (local is null)
+        {
+            FileIo.EnsureBytes(_filesDir, dto.Sha256, fileBytes);
+            InsertFullFile(dto);
+            SetFileSyncRev(dto.Id, dto.Rev);
+            return (ApplyResult.Inserted, null);
+        }
+
+        var syncRev = GetFileSyncRev(dto.Id);
+        if (dto.Rev == local.Rev)
+        {
+            if (SameFileContent(local, dto))
+            {
+                SetFileSyncRev(dto.Id, Math.Max(syncRev, dto.Rev));
+                return (ApplyResult.NoOp, null);
+            }
+            // Та же ревизия, разное содержимое: копия — один раз на хеш.
+            // seen_conflicts переиспользуется и для файлов (колонка note_id
+            // хранит id сущности — заметки или файла).
+            var hash = FileContentHash(dto);
+            if (NoteSeenConflict(dto.Id, dto.Rev, hash))
+            {
+                SetFileSyncRev(dto.Id, Math.Max(syncRev, dto.Rev));
+                return (ApplyResult.NoOp, null);
+            }
+            return MakeFileConflictCopy(dto, fileBytes);
+        }
+
+        if (dto.Rev < local.Rev)
+            return (ApplyResult.NoOp, null);
+
+        // dto.Rev > local.Rev
+        if (local.Rev == syncRev || dto.BaseRev >= syncRev)
+        {
+            FileIo.EnsureBytes(_filesDir, dto.Sha256, fileBytes);
+            UpdateFullFile(dto);
+            SetFileSyncRev(dto.Id, dto.Rev);
+            return (ApplyResult.FastForwarded, null);
+        }
+
+        // Расхождение: копия — один раз на хеш входящей версии.
+        var incomingHash = FileContentHash(dto);
+        if (NoteSeenConflict(dto.Id, dto.Rev, incomingHash))
+            return (ApplyResult.NoOp, null);
+        return MakeFileConflictCopy(dto, fileBytes);
+    }
+
+    public static string FileContentHash(SyncFileDto dto)
+    {
+        // Каноническая строка метаданных (без rev/author/updated_at —
+        // они служебные и в сравнении участия не принимают).
+        var canonical = string.Join('\0',
+            dto.Name, dto.Mime, dto.Size.ToString(), dto.Sha256,
+            dto.IsDeleted ? "1" : "0");
+        return Convert.ToHexString(
+            System.Security.Cryptography.SHA256.HashData(
+                System.Text.Encoding.UTF8.GetBytes(canonical))).ToLowerInvariant();
+    }
+
+    private static bool SameFileContent(FileEntry local, SyncFileDto dto) =>
+        local.Name == dto.Name
+        && local.Mime == dto.Mime
+        && local.SizeBytes == dto.Size
+        && string.Equals(local.Sha256, dto.Sha256, StringComparison.OrdinalIgnoreCase)
+        && local.IsDeleted == dto.IsDeleted;
+
+    private void InsertFullFile(SyncFileDto dto)
+    {
+        using var tx = _db.BeginTransaction();
+        using var cmd = _db.CreateCommand();
+        cmd.Transaction = (SqliteTransaction)tx;
+        cmd.CommandText = "INSERT INTO files(id, name, mime, size, sha256, stored_name, rev, updated_at, author_device, is_deleted) " +
+            "VALUES($id, $n, $m, $s, $h, $sn, $r, $u, $d, $del);";
+        cmd.Parameters.AddWithValue("$id", dto.Id.ToString("N"));
+        cmd.Parameters.AddWithValue("$n", dto.Name);
+        cmd.Parameters.AddWithValue("$m", dto.Mime);
+        cmd.Parameters.AddWithValue("$s", dto.Size);
+        cmd.Parameters.AddWithValue("$h", dto.Sha256);
+        cmd.Parameters.AddWithValue("$sn", dto.Sha256.ToLowerInvariant());
+        cmd.Parameters.AddWithValue("$r", dto.Rev);
+        cmd.Parameters.AddWithValue("$u", dto.UpdatedAt.ToString("o"));
+        cmd.Parameters.AddWithValue("$d", dto.Author);
+        cmd.Parameters.AddWithValue("$del", dto.IsDeleted ? 1 : 0);
+        cmd.ExecuteNonQuery();
+        tx.Commit();
+    }
+
+    private void UpdateFullFile(SyncFileDto dto)
+    {
+        using var tx = _db.BeginTransaction();
+        using var cmd = _db.CreateCommand();
+        cmd.Transaction = (SqliteTransaction)tx;
+        cmd.CommandText = "UPDATE files SET name = $n, mime = $m, size = $s, sha256 = $h, stored_name = $sn, " +
+            "rev = $r, updated_at = $u, author_device = $d, is_deleted = $del WHERE id = $id;";
+        cmd.Parameters.AddWithValue("$id", dto.Id.ToString("N"));
+        cmd.Parameters.AddWithValue("$n", dto.Name);
+        cmd.Parameters.AddWithValue("$m", dto.Mime);
+        cmd.Parameters.AddWithValue("$s", dto.Size);
+        cmd.Parameters.AddWithValue("$sn", dto.Sha256.ToLowerInvariant());
+        cmd.Parameters.AddWithValue("$h", dto.Sha256);
+        cmd.Parameters.AddWithValue("$r", dto.Rev);
+        cmd.Parameters.AddWithValue("$u", dto.UpdatedAt.ToString("o"));
+        cmd.Parameters.AddWithValue("$d", dto.Author);
+        cmd.Parameters.AddWithValue("$del", dto.IsDeleted ? 1 : 0);
+        cmd.ExecuteNonQuery();
+        tx.Commit();
+    }
+
+    private (ApplyResult, ConflictInfo?) MakeFileConflictCopy(
+        SyncFileDto dto, Func<string, byte[]?> fileBytes)
+    {
+        FileIo.EnsureBytes(_filesDir, dto.Sha256, fileBytes);
+        var copy = new SyncFileDto
+        {
+            Id = Guid.NewGuid(),
+            Rev = 1,
+            BaseRev = 0,
+            Name = $"{dto.Name} (конфликт)",
+            Mime = dto.Mime,
+            Size = dto.Size,
+            Sha256 = dto.Sha256,
+            UpdatedAt = dto.UpdatedAt,
+            Author = dto.Author,
+            IsDeleted = false,
+        };
+        InsertFullFile(copy);
+        SetFileSyncRev(copy.Id, 1);
+        return (ApplyResult.Conflict, new ConflictInfo(dto.Id, copy.Id, copy.Name));
     }
 
     public void Dispose()

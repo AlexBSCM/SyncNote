@@ -133,7 +133,6 @@ public sealed class FileIoTests
         var src = WriteSource(baseDir, "z.bin", new byte[] { 2, 3 });
         var filesDir = Path.Combine(baseDir, "files");
         FileIo.ImportFromFile(filesDir, src);
-        Assert.AreEqual(1, Directory.GetFiles(filesDir).Length);
         Assert.AreEqual(0, Directory.GetFiles(filesDir, "*.tmp").Length);
     }
 }

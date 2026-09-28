@@ -14,6 +14,8 @@ class SyncEngineTest {
         val files = mutableMapOf<String, MutableList<Attachment>>()
         val syncs = mutableMapOf<String, Long>()
         val seen = mutableSetOf<Triple<String, Long, String>>()
+        val sepFiles = mutableMapOf<String, FileEntry>()
+        val fileSyncs = mutableMapOf<String, Long>()
         val dir: File = createTempDir("fakefiles")
 
         override fun tryGet(id: String) = notes[id]
@@ -56,6 +58,46 @@ class SyncEngineTest {
             val n = notes[id]!!
             n.title = title
             n.rev += 1
+        }
+
+        override fun getFiles(includeDeleted: Boolean) =
+            sepFiles.values.filter { includeDeleted || !it.isDeleted }
+        override fun tryGetFile(id: String) = sepFiles[id]
+        override fun insertFullFile(dto: SyncFileDto) {
+            sepFiles[dto.id] = FileEntry(id = dto.id, name = dto.name,
+                mime = dto.mime, sizeBytes = dto.size, sha256 = dto.sha256,
+                storedName = dto.sha256, rev = dto.rev, updatedAt = dto.updatedAt,
+                authorDeviceId = dto.author, isDeleted = dto.isDeleted)
+        }
+        override fun updateFullFile(dto: SyncFileDto) = insertFullFile(dto)
+        override fun addFile(name: String, mime: String, content: ByteArray): FileEntry {
+            if (!com.syncnote.FeatureFlags.enableSeparateFiles)
+                throw IllegalStateException("flag off")
+            val md = java.security.MessageDigest.getInstance("SHA-256")
+            val hex = md.digest(content).joinToString("") { "%02x".format(it) }
+            val e = FileEntry(name = name, mime = mime,
+                sizeBytes = content.size.toLong(), sha256 = hex, storedName = hex,
+                rev = 1, authorDeviceId = deviceId())
+            sepFiles[e.id] = e
+            return e
+        }
+        override fun deleteFile(id: String): Boolean {
+            if (!com.syncnote.FeatureFlags.enableSeparateFiles)
+                throw IllegalStateException("flag off")
+            val e = sepFiles[id] ?: return false
+            if (e.isDeleted) return false
+            sepFiles[id] = e.copy(isDeleted = true, rev = e.rev + 1)
+            return true
+        }
+        override fun getFileSyncRev(fileId: String) = fileSyncs[fileId] ?: 0
+        override fun setFileSyncRev(fileId: String, rev: Long) { fileSyncs[fileId] = rev }
+        override fun hasLiveReferencesToSha(sha256: String) =
+            sepFiles.values.any { it.sha256.equals(sha256, ignoreCase = true) && !it.isDeleted }
+        override fun exportFiles() = sepFiles.values.map { e ->
+            SyncFileDto(id = e.id, rev = e.rev, baseRev = getFileSyncRev(e.id),
+                name = e.name, mime = e.mime, size = e.sizeBytes,
+                sha256 = e.sha256, updatedAt = e.updatedAt,
+                author = e.authorDeviceId, isDeleted = e.isDeleted)
         }
     }
 
@@ -135,6 +177,122 @@ class SyncEngineTest {
             fail("ожидалось исключение")
         } catch (e: IllegalStateException) {
             assertTrue(e.message!!.contains("f.bin"))
+        }
+    }
+
+    private fun sha(s: String): String {
+        val md = java.security.MessageDigest.getInstance("SHA-256")
+        return md.digest(s.toByteArray()).joinToString("") { "%02x".format(it) }
+    }
+
+    private fun fileDto(id: String, rev: Long, name: String, content: String) =
+        SyncFileDto(id = id, rev = rev, baseRev = 0, name = name,
+            mime = "text/plain", size = content.length.toLong(),
+            sha256 = sha(content), updatedAt = 1, author = "dev", isDeleted = false)
+
+    private fun fileBytes(vararg pairs: Pair<String, String>): (String) -> ByteArray? {
+        // Ключи — sha контента.
+        val bySha = pairs.associate { (_, content) ->
+            val b = content.toByteArray()
+            sha(content) to b
+        }
+        return { sha -> bySha[sha] }
+    }
+
+    @Test fun fileInsert_reapply_noOp() {
+        val b = FakeStore()
+        val dto = fileDto(UUID.randomUUID().toString(), 1, "f.txt", "aaa")
+        val (r1, _) = SyncEngine.applyFile(b, dto, fileBytes("k" to "aaa"))
+        assertEquals(ApplyResult.Inserted, r1)
+        assertEquals("f.txt", b.sepFiles[dto.id]!!.name)
+
+        val (r2, c2) = SyncEngine.applyFile(b, dto, fileBytes("k" to "aaa"))
+        assertEquals(ApplyResult.NoOp, r2)
+        assertNull(c2)
+    }
+
+    @Test fun fileDivergent_keepBoth_noDupOnRetry() {
+        val b = FakeStore()
+        val id = UUID.randomUUID().toString()
+        val fb = fileBytes("k" to "aaa")
+        val (ri, _) = SyncEngine.applyFile(b, fileDto(id, 1, "f.txt", "aaa"), fb)
+        assertEquals(ApplyResult.Inserted, ri)
+
+        // Локальная правка: rev 2 при syncRev 1. Входит A rev 2 base 1.
+        b.sepFiles[id] = b.sepFiles[id]!!.copy(name = "Версия B", rev = 2)
+        val dtoA = fileDto(id, 2, "Версия A", "aaa").copy(baseRev = 1)
+        val (r1, c1) = SyncEngine.applyFile(b, dtoA, fb)
+        assertEquals(ApplyResult.Conflict, r1)
+        assertNotNull(c1)
+        assertTrue(c1!!.copyTitle.endsWith(" (конфликт)"))
+        assertEquals(2, b.sepFiles.size)
+
+        val (r2, c2) = SyncEngine.applyFile(b, dtoA, fb)
+        assertEquals(ApplyResult.NoOp, r2)
+        assertNull(c2)
+        assertEquals(2, b.sepFiles.size)
+    }
+
+    @Test fun fileDelete_propagates_asTombstone() {
+        val b = FakeStore()
+        val id = UUID.randomUUID().toString()
+        val fb = fileBytes("k" to "aaa")
+        SyncEngine.applyFile(b, fileDto(id, 1, "f.txt", "aaa"), fb)
+        val tomb = fileDto(id, 2, "f.txt", "aaa").copy(isDeleted = true)
+        val (r, _) = SyncEngine.applyFile(b, tomb, fb)
+        assertEquals(ApplyResult.FastForwarded, r)
+        assertTrue(b.sepFiles[id]!!.isDeleted)
+        assertEquals(0, b.getFiles().size)
+        assertEquals(1, b.getFiles(includeDeleted = true).size)
+    }
+
+    @Test fun fileMissingBytes_throws() {
+        val b = FakeStore()
+        val dto = fileDto(UUID.randomUUID().toString(), 1, "f.txt", "zzz")
+        try {
+            SyncEngine.applyFile(b, dto) { null }
+            fail("ожидалось исключение")
+        } catch (e: IllegalStateException) {
+            assertTrue(e.message!!.contains(dto.sha256))
+        }
+    }
+
+    @Test fun fileCrud_addGetDelete_tombstone() {
+        val s = FakeStore()
+        val e = s.addFile("d.txt", "text/plain", "hi".toByteArray())
+        assertEquals(1, e.rev)
+        assertFalse(e.isDeleted)
+        assertEquals(1, s.getFiles().size)
+        assertTrue(s.deleteFile(e.id))
+        assertEquals(0, s.getFiles().size)
+        assertEquals(1, s.getFiles(includeDeleted = true).size)
+        assertTrue(s.tryGetFile(e.id)!!.isDeleted)
+        assertFalse(s.deleteFile(UUID.randomUUID().toString()))
+    }
+
+    @Test fun fileExport_includesTombstones_withBaseRev() {
+        val s = FakeStore()
+        val e = s.addFile("e.txt", "text/plain", "x".toByteArray())
+        s.deleteFile(e.id)
+        val all = s.exportFiles()
+        assertEquals(1, all.size)
+        assertTrue(all[0].isDeleted)
+    }
+
+    @Test fun fileDisabledFlag_blocksNewPaths() {
+        val s = FakeStore()
+        com.syncnote.FeatureFlags.enableSeparateFiles = false
+        try {
+            try {
+                s.addFile("x", "text/plain", byteArrayOf(1))
+                fail("ожидалось исключение")
+            } catch (e: IllegalStateException) { }
+            try {
+                s.deleteFile("y")
+                fail("ожидалось исключение")
+            } catch (e: IllegalStateException) { }
+        } finally {
+            com.syncnote.FeatureFlags.enableSeparateFiles = true
         }
     }
 }

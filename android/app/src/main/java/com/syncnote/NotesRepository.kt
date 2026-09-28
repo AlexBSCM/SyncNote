@@ -225,6 +225,161 @@ class NotesRepository(ctx: Context) : SyncStore {
         return false
     }
 
+    private fun requireFilesEnabled() {
+        if (!FeatureFlags.enableSeparateFiles)
+            throw IllegalStateException("Подсистема отдельных файлов отключена флагом EnableSeparateFiles.")
+    }
+
+    override fun getFiles(includeDeleted: Boolean): List<FileEntry> {
+        val out = mutableListOf<FileEntry>()
+        val sql = "SELECT id, name, mime, size, sha256, stored_name, rev, updated_at, author_device, is_deleted " +
+            "FROM files " + (if (includeDeleted) "" else "WHERE is_deleted=0 ") + "ORDER BY name"
+        db.readableDatabase.rawQuery(sql, null).use { c ->
+            while (c.moveToNext())
+                out += FileEntry(id = c.getString(0), name = c.getString(1),
+                    mime = c.getString(2), sizeBytes = c.getLong(3),
+                    sha256 = c.getString(4), storedName = c.getString(5),
+                    rev = c.getLong(6), updatedAt = c.getLong(7),
+                    authorDeviceId = c.getString(8), isDeleted = c.getInt(9) != 0)
+        }
+        return out
+    }
+
+    override fun tryGetFile(id: String): FileEntry? {
+        db.readableDatabase.rawQuery(
+            "SELECT id, name, mime, size, sha256, stored_name, rev, updated_at, author_device, is_deleted " +
+                "FROM files WHERE id=?", arrayOf(id)).use { c ->
+            if (!c.moveToFirst()) return null
+            return FileEntry(id = c.getString(0), name = c.getString(1),
+                mime = c.getString(2), sizeBytes = c.getLong(3),
+                sha256 = c.getString(4), storedName = c.getString(5),
+                rev = c.getLong(6), updatedAt = c.getLong(7),
+                authorDeviceId = c.getString(8), isDeleted = c.getInt(9) != 0)
+        }
+    }
+
+    override fun addFile(name: String, mime: String, content: ByteArray): FileEntry {
+        requireFilesEnabled()
+        if (content.size > FileIo.MAX_FILE_SIZE_BYTES)
+            throw FileTooLargeException(name, content.size.toLong(), FileIo.MAX_FILE_SIZE_BYTES)
+        val md = java.security.MessageDigest.getInstance("SHA-256")
+        val hex = md.digest(content).joinToString("") { "%02x".format(it) }
+        val dest = File(filesRoot, hex)
+        if (!dest.exists()) {
+            val tmp = File.createTempFile("fileio-", ".part", filesRoot)
+            try {
+                tmp.writeBytes(content)
+                if (!tmp.renameTo(dest)) {
+                    tmp.delete()
+                    throw java.io.IOException("Не удалось сохранить файл $name.")
+                }
+            } catch (e: Exception) {
+                try { tmp.delete() } catch (_: Exception) { }
+                throw e
+            }
+        }
+        val entry = FileEntry(name = name, mime = mime,
+            sizeBytes = content.size.toLong(), sha256 = hex, storedName = hex,
+            rev = 1, updatedAt = System.currentTimeMillis(), authorDeviceId = deviceId())
+        db.writableDatabase.execSQL(
+            "INSERT INTO files(id, name, mime, size, sha256, stored_name, rev, updated_at, author_device, is_deleted) " +
+                "VALUES(?, ?, ?, ?, ?, ?, 1, ?, ?, 0)",
+            arrayOf(entry.id, name, mime, content.size.toLong(), hex, hex,
+                entry.updatedAt, entry.authorDeviceId))
+        return entry
+    }
+
+    override fun deleteFile(id: String): Boolean {
+        requireFilesEnabled()
+        db.writableDatabase.beginTransaction()
+        try {
+            db.writableDatabase.execSQL(
+                "UPDATE files SET is_deleted=1, rev=rev+1, updated_at=? WHERE id=? AND is_deleted=0",
+                arrayOf(System.currentTimeMillis().toString(), id))
+            // affected-rows через changes()
+            var rows = 0
+            db.readableDatabase.rawQuery("SELECT changes()", null).use { c ->
+                if (c.moveToFirst()) rows = c.getInt(0)
+            }
+            db.writableDatabase.setTransactionSuccessful()
+            return rows > 0
+        } finally {
+            db.writableDatabase.endTransaction()
+        }
+    }
+
+    override fun getFileSyncRev(fileId: String): Long {
+        db.readableDatabase.rawQuery(
+            "SELECT sync_rev FROM file_syncstate WHERE file_id=?", arrayOf(fileId)).use { c ->
+            if (!c.moveToFirst()) return 0
+            return c.getLong(0)
+        }
+    }
+
+    override fun setFileSyncRev(fileId: String, rev: Long) {
+        db.writableDatabase.execSQL(
+            "INSERT OR REPLACE INTO file_syncstate(file_id, sync_rev) VALUES(?, ?)",
+            arrayOf(fileId, rev))
+    }
+
+    override fun hasLiveReferencesToSha(sha256: String): Boolean {
+        db.readableDatabase.rawQuery(
+            "SELECT 1 FROM files WHERE sha256=? AND is_deleted=0 LIMIT 1",
+            arrayOf(sha256.lowercase())).use { c ->
+            return c.count > 0
+        }
+    }
+
+    override fun exportFiles(): List<SyncFileDto> {
+        requireFilesEnabled()
+        val ids = mutableListOf<String>()
+        db.readableDatabase.rawQuery("SELECT id FROM files", null).use { c ->
+            while (c.moveToNext()) ids += c.getString(0)
+        }
+        return ids.mapNotNull { id ->
+            val e = tryGetFile(id) ?: return@mapNotNull null
+            SyncFileDto(id = e.id, rev = e.rev, baseRev = getFileSyncRev(id),
+                name = e.name, mime = e.mime, size = e.sizeBytes,
+                sha256 = e.sha256, updatedAt = e.updatedAt,
+                author = e.authorDeviceId, isDeleted = e.isDeleted)
+        }
+    }
+
+    override fun applyFile(dto: SyncFileDto, fileBytes: (String) -> ByteArray?): Pair<ApplyResult, ConflictInfo?> {
+        requireFilesEnabled()
+        return SyncEngine.applyFile(this, dto, fileBytes)
+    }
+
+    override fun insertFullFile(dto: SyncFileDto) {
+        val w = db.writableDatabase
+        w.beginTransaction()
+        try {
+            w.execSQL("INSERT INTO files(id, name, mime, size, sha256, stored_name, rev, updated_at, author_device, is_deleted) " +
+                "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                arrayOf(dto.id, dto.name, dto.mime, dto.size, dto.sha256,
+                    dto.sha256.lowercase(), dto.rev, dto.updatedAt, dto.author,
+                    if (dto.isDeleted) 1 else 0))
+            w.setTransactionSuccessful()
+        } finally {
+            w.endTransaction()
+        }
+    }
+
+    override fun updateFullFile(dto: SyncFileDto) {
+        val w = db.writableDatabase
+        w.beginTransaction()
+        try {
+            w.execSQL("UPDATE files SET name=?, mime=?, size=?, sha256=?, stored_name=?, rev=?, updated_at=?, author_device=?, is_deleted=? " +
+                "WHERE id=?",
+                arrayOf(dto.name, dto.mime, dto.size, dto.sha256,
+                    dto.sha256.lowercase(), dto.rev, dto.updatedAt, dto.author,
+                    if (dto.isDeleted) 1 else 0, dto.id))
+            w.setTransactionSuccessful()
+        } finally {
+            w.endTransaction()
+        }
+    }
+
     override fun exportAll(): List<SyncNoteDto> {
         val ids = mutableListOf<String>()
         db.readableDatabase.rawQuery("SELECT id FROM notes", null).use { c ->
