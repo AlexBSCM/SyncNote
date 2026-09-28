@@ -16,6 +16,7 @@ public partial class MainWindow : Window
     private CancellationTokenSource? _syncCts;
     private readonly WifiDirectGroup _p2pGroup = new();
     private BluetoothServer? _btServer;
+    private readonly FilesViewModel _filesVm;
 
     public MainWindow()
     {
@@ -30,6 +31,15 @@ public partial class MainWindow : Window
         SyncDeviceBox.Text = Environment.MachineName;
         PairServerInfo.Text = $"Принимаю подключения: 127.0.0.1:{SyncPort}";
         P2pInfo.Text = _p2pGroup.Status;
+        // Вкладка «Файлы» (этап F.6): DataContext + флаг.
+        _filesVm = new FilesViewModel(_store);
+        FilesTab.DataContext = _filesVm;
+        ApplyFilesFlag();
+        MainTabs.SelectionChanged += (_, _) =>
+        {
+            if (MainTabs.SelectedItem == FilesTab && FeatureFlags.EnableSeparateFiles)
+                _filesVm.Refresh();
+        };
         Closed += (_, _) =>
         {
             try { _serverCts.Cancel(); } catch { }
@@ -163,6 +173,15 @@ public partial class MainWindow : Window
         RefreshList();
     }
 
+    private void ApplyFilesFlag()
+    {
+        bool on = FeatureFlags.EnableSeparateFiles;
+        FilesContent.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
+        FilesDisabledHint.Visibility = on ? Visibility.Collapsed : Visibility.Visible;
+        if (on)
+            _filesVm.Refresh();
+    }
+
     private void RefreshSettings()
     {
         var notes = _store.List();
@@ -253,6 +272,8 @@ public partial class MainWindow : Window
             SetSyncState($"Готово: отправлено {result.Pushed}, получено {result.Pulled}, " +
                 $"конфликтов {result.Conflicts}.");
             RefreshList();
+            if (FeatureFlags.EnableSeparateFiles)
+                _filesVm.Refresh();
             MainTabs.SelectedIndex = 0;
             if (result.Conflicts > 0)
             {

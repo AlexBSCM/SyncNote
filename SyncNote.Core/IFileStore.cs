@@ -7,6 +7,7 @@ namespace SyncNote.Core;
 // общие только утилиты (FileIo) и примитивы БД.
 public interface IFileStore
 {
+    string FilesDirectory { get; }
     IReadOnlyList<FileEntry> GetFiles(bool includeDeleted = false);
     FileEntry? TryGetFile(Guid id);
     FileEntry AddFile(string sourcePath);
