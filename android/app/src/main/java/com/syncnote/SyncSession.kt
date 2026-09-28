@@ -20,6 +20,13 @@ class SyncSession(
     private val deviceName: String,
     private val token: String?
 ) {
+    companion object {
+        val CAPS = listOf("files-v1")
+        const val FILES_CAP = "files-v1"
+    }
+
+    private var lastServerCaps: List<String> = emptyList()
+
     fun run(store: SyncStore, tmpDir: File? = null): SyncSessionResult {
         return tryHosts(store, tmpDir, listOf(host))
     }
@@ -64,13 +71,29 @@ class SyncSession(
             val greet = readFrame(inp)
             if (greet.getString("t") != "hello_ok")
                 throw HelloRejectedException(greet.optString("reason", "отказ без причины"))
+            val serverCaps = mutableSetOf<String>()
+            val capsArrIn = greet.optJSONArray("caps")
+            if (capsArrIn != null) {
+                for (i in 0 until capsArrIn.length()) serverCaps += capsArrIn.getString(i)
+            }
+            lastServerCaps = serverCaps.toList()
 
             val knowledge = JSONArray()
             val all = store.exportAll()
             for (dto in all) knowledge.put(JSONObject()
                 .put("id", dto.id).put("rev", dto.rev))
+            val fileKnowledge = JSONArray()
+            var filesCapablePeer = false
+            if (FeatureFlags.enableSeparateFiles) {
+                for (f in store.exportFiles())
+                    fileKnowledge.put(JSONObject()
+                        .put("id", f.id).put("rev", f.rev))
+            }
+            val capsArr = JSONArray()
+            for (c in CAPS) capsArr.put(c)
             writeFrame(out, JSONObject()
-                .put("t", "sync_begin").put("knowledge", knowledge))
+                .put("t", "sync_begin").put("knowledge", knowledge)
+                .put("file_knowledge", fileKnowledge).put("caps", capsArr))
 
             for (dto in all) {
                 if (store.tryGet(dto.id) != null && dto.rev <= store.getSyncRev(dto.id))
@@ -80,6 +103,17 @@ class SyncSession(
                 pushed++
                 if (ack.optString("result") in listOf("Inserted", "FastForwarded", "NoOp"))
                     store.setSyncRev(dto.id, dto.rev)
+            }
+            val peerCaps = lastServerCaps.toSet()
+            if (peerCaps.contains(FILES_CAP) && FeatureFlags.enableSeparateFiles) {
+                for (f in store.exportFiles()) {
+                    if (store.tryGetFile(f.id) != null && f.rev <= store.getFileSyncRev(f.id))
+                        continue
+                    val ackResult = sendFileDto(store, out, inp, f)
+                    pushed++
+                    if (ackResult in listOf("Inserted", "FastForwarded", "NoOp"))
+                        store.setFileSyncRev(f.id, f.rev)
+                }
             }
             writeFrame(out, JSONObject().put("t", "sync_end"))
 
@@ -91,6 +125,26 @@ class SyncSession(
                     "sync_end" -> break
                     "file_begin", "file_chunk", "file_end" ->
                         bufferChunk(msg, pending, tmpDir)
+                    "query_has_hash" -> {
+                        answerHasHash(store, out, msg)
+                        continue
+                    }
+                    "file_register" -> {
+                        val f = fileFromJson(msg.getJSONObject("file"))
+                        val (result, conflict) = store.applyFile(f) { sha ->
+                            pending[sha]?.file?.readBytes()
+                        }
+                        discardPending(pending)
+                        pulled++
+                        if (result == ApplyResult.Conflict) conflicts++
+                        val ack = JSONObject()
+                            .put("t", "applied")
+                            .put("id", f.id)
+                            .put("result", result.name)
+                        if (conflict != null) ack.put("copyId", conflict.copyId)
+                        writeFrame(out, ack)
+                        continue
+                    }
                     "note_upsert" -> {
                         val dto = dtoFromJson(msg.getJSONObject("note"))
                         android.util.Log.i("SyncNote", "pull note rev=${dto.rev} files=${dto.attachments.size}")
@@ -105,7 +159,10 @@ class SyncSession(
                             .put("id", dto.id)
                             .put("result", result.name))
                     }
-                    else -> throw java.io.IOException("Неожиданный тип ${msg.getString("t")}.")
+                    else -> {
+                        android.util.Log.w("SyncNote", "unknown frame ignored")
+                        continue
+                    }
                 }
             }
             } finally {
@@ -156,6 +213,70 @@ class SyncSession(
             }
         }
     }
+
+    private fun answerHasHash(store: SyncStore, out: DataOutputStream, msg: JSONObject) {
+        val sha = msg.optString("sha256", "")
+        var has = false
+        if (FeatureFlags.enableSeparateFiles) {
+            val norm = sha.lowercase()
+            has = store.hasLiveReferencesToSha(norm) ||
+                java.io.File(store.filesDir(), norm).exists()
+        }
+        writeFrame(out, JSONObject()
+            .put("t", "hash_response").put("sha256", sha).put("has", has))
+    }
+
+    private fun sendFileDto(
+        store: SyncStore, out: DataOutputStream, inp: DataInputStream, dto: SyncFileDto
+    ): String? {
+        writeFrame(out, JSONObject()
+            .put("t", "query_has_hash").put("sha256", dto.sha256))
+        val resp = readFrame(inp)
+        if (resp.optString("t") != "hash_response")
+            throw java.io.IOException("Ожидался hash_response.")
+        if (!resp.optBoolean("has", false)) {
+            val path = java.io.File(store.filesDir(), dto.sha256.lowercase())
+            if (!path.exists())
+                throw java.io.IOException("Нет локального файла ${dto.name}.")
+            val bytes = path.readBytes()
+            writeFrame(out, JSONObject()
+                .put("t", "file_begin").put("sha", dto.sha256)
+                .put("name", dto.name).put("mime", dto.mime)
+                .put("size", bytes.size))
+            val chunk = 64 * 1024
+            var off = 0
+            while (off < bytes.size) {
+                val end = minOf(off + chunk, bytes.size)
+                writeFrame(out, JSONObject()
+                    .put("t", "file_chunk").put("sha", dto.sha256)
+                    .put("data_b64", android.util.Base64.encodeToString(
+                        bytes.copyOfRange(off, end), android.util.Base64.NO_WRAP)))
+                off = end
+            }
+            writeFrame(out, JSONObject().put("t", "file_end").put("sha", dto.sha256))
+        }
+        writeFrame(out, JSONObject()
+            .put("t", "file_register").put("file", fileToJson(dto)))
+        val ack = readFrame(inp)
+        return ack.optString("result", null)
+    }
+
+    private fun fileToJson(d: SyncFileDto): JSONObject =
+        JSONObject()
+            .put("Id", d.id).put("Rev", d.rev).put("BaseRev", d.baseRev)
+            .put("Name", d.name).put("Mime", d.mime)
+            .put("Size", d.size).put("Sha256", d.sha256)
+            .put("UpdatedAt", d.updatedAt).put("Author", d.author)
+            .put("IsDeleted", d.isDeleted)
+
+    private fun fileFromJson(o: JSONObject): SyncFileDto =
+        SyncFileDto(id = o.getString("Id"), rev = o.getLong("Rev"),
+            baseRev = o.optLong("BaseRev", 0), name = o.optString("Name", ""),
+            mime = o.optString("Mime", "application/octet-stream"),
+            size = o.optLong("Size", 0), sha256 = o.optString("Sha256", ""),
+            updatedAt = o.optLong("UpdatedAt", 0),
+            author = o.optString("Author", ""),
+            isDeleted = o.optBoolean("IsDeleted", false))
 
     private fun sendNote(store: SyncStore, out: DataOutputStream, dto: SyncNoteDto) {
         val bySha = store.attachments(dto.id).associateBy { it.sha256 }

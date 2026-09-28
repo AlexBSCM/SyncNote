@@ -31,19 +31,31 @@ Windows показывает QR с JSON (пример):
 
 ```
 hello       { t, deviceId, deviceName, token? }   // первое сообщение клиента
-hello_ok    { t, serverDeviceId }                 // сервер принял
+hello_ok    { t, serverDeviceId, caps: [...] }    // сервер принял; caps вида ["files-v1"]
 hello_err   { t, reason }                         // token неверный/истёк/использован
-sync_begin  { t, knowledge: [{id, rev}] }         // ревизии клиента
+sync_begin  { t, knowledge: [{id, rev}],          // ревизии клиента
+              file_knowledge: [{id, rev}],        // ревизии файлов клиента
+              caps: [...] }                       // возможности клиента
 note_upsert { t, note, checklist, attachments[] } // note: id/rev/title/body/updatedAt/author/baseRev
-note_delete { t, id, rev, author }
-file_begin  { t, attachmentId, name, size, sha256 }
-file_chunk  { t, attachmentId, offset, data_b64 }
-file_end    { t, attachmentId }
+note_delete { t, id, rev, author }                // УСТАРЕЛО: удаления едут как note_upsert с isDeleted
+file_begin  { t, sha, name, mime, size }          // байты файла чанками...
+file_chunk  { t, sha, data_b64 }                  // ...привязаны к sha, не к id
+file_end    { t, sha }                            // сверка sha256, затем атомарный move
+file_register { t, file: {...SyncFileDto...} }    // метаданные standalone-файла
+query_has_hash { t, sha256 }                      // "есть ли у тебя такой контент?"
+hash_response { t, sha256, has }                  // ответ
 applied     { t, id, result, copyId? }            // квитанция
 sync_end    { t }
 conflict    { t, id, keptRev, copyId }            // уведомление о сохранённой копии
 error       { t, reason }                         // явная ошибка, без молчаливых отказов
 ```
+
+Совместимость (строго):
+- Новые кадры (`file_register`, `query_has_hash`, `hash_response`,
+  `file_knowledge`, `caps`) шлются только при совпадении caps `files-v1`
+  с обеих сторон. Без совпадения сессия идёт ровно по старому протоколу.
+- Неизвестный тип кадра — тихий игнор с Warning в лог, сессия продолжается.
+  Отсутствующие поля (`caps`, `file_knowledge`) читаются как пустые.
 
 ## 3. Правила применения (идемпотентность, конфликты)
 

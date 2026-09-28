@@ -15,6 +15,49 @@ public static class SyncJson
         return node;
     }
 
+    public static JsonObject ToFileNode(SyncFileDto dto)
+    {
+        return new JsonObject
+        {
+            ["Id"] = dto.Id.ToString("N"),
+            ["Rev"] = dto.Rev,
+            ["BaseRev"] = dto.BaseRev,
+            ["Name"] = dto.Name,
+            ["Mime"] = dto.Mime,
+            ["Size"] = dto.Size,
+            ["Sha256"] = dto.Sha256,
+            ["UpdatedAt"] = new DateTimeOffset(dto.UpdatedAt).ToUnixTimeMilliseconds(),
+            ["Author"] = dto.Author,
+            ["IsDeleted"] = dto.IsDeleted,
+        };
+    }
+
+    public static SyncFileDto FromFileNode(JsonNode node)
+    {
+        var obj = node.AsObject();
+        var dto = new SyncFileDto
+        {
+            Id = Guid.Parse(obj["Id"]!.GetValue<string>()),
+            Rev = obj["Rev"]!.GetValue<long>(),
+            BaseRev = obj["BaseRev"]?.GetValue<long>() ?? 0,
+            Name = obj["Name"]?.GetValue<string>() ?? string.Empty,
+            Mime = obj["Mime"]?.GetValue<string>() ?? "application/octet-stream",
+            Size = obj["Size"]?.GetValue<long>() ?? 0,
+            Sha256 = obj["Sha256"]?.GetValue<string>() ?? string.Empty,
+            Author = obj["Author"]?.GetValue<string>() ?? string.Empty,
+            IsDeleted = obj["IsDeleted"]?.GetValue<bool>() ?? false,
+        };
+        var updated = obj["UpdatedAt"];
+        if (updated is JsonValue v && v.TryGetValue<long>(out var millis))
+            dto.UpdatedAt = DateTimeOffset.FromUnixTimeMilliseconds(millis).UtcDateTime;
+        else if (updated is not null)
+            dto.UpdatedAt = DateTime.Parse(updated.GetValue<string>(), null,
+                System.Globalization.DateTimeStyles.RoundtripKind);
+        else
+            dto.UpdatedAt = DateTime.UtcNow;
+        return dto;
+    }
+
     public static SyncNoteDto FromNode(JsonNode node)
     {
         var obj = node.AsObject();
