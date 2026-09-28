@@ -142,6 +142,11 @@ class SyncActivity : AppCompatActivity(), P2pConnector.Listener {
                 }
                 setState("Готово: отправлено ${r.pushed}, получено ${r.pulled}, " +
                     "конфликтов ${r.conflicts}. Узел запомнен.")
+                runOnUiThread {
+                    android.widget.Toast.makeText(this,
+                        "Синхронизировано: ${r.pushed}↑ ${r.pulled}↓", Toast.LENGTH_SHORT).show()
+                    finish()
+                }
             } catch (e: HelloRejectedException) {
                 android.util.Log.i("SyncNote", "sync rejected: ${e.message}")
                 setState("Ошибка: ${e.message}")
