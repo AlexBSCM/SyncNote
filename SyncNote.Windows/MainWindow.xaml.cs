@@ -51,7 +51,9 @@ public partial class MainWindow : Window
     }
 
     private bool _suppressSelection;
+    private bool _updatingSelectAll;
     private List<SelectableNote> _notesWrap = new();
+    private int _knownTrustedCount = -1;
 
     private sealed class SelectableNote(Note note, bool selected) : System.ComponentModel.INotifyPropertyChanged
     {
@@ -108,8 +110,6 @@ public partial class MainWindow : Window
 
     private void SelectNote(Guid id) =>
         NotesList.SelectedItem = _notesWrap.FirstOrDefault(s => s.Note.Id == id);
-
-    private bool _updatingSelectAll;
 
     private void UpdateCheckedButton()
     {
