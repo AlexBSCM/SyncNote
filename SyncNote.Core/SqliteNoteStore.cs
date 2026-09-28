@@ -7,7 +7,7 @@ namespace SyncNote.Core;
 // keyvalue(key, value) — schema_version и device_id.
 public sealed class SqliteNoteStore : ISyncStore, IDisposable
 {
-    private const int SchemaVersion = 6;
+    private const int SchemaVersion = 7;
     private readonly SqliteConnection _db;
     private readonly string _deviceId;
     private readonly string _filesDir;
@@ -97,7 +97,7 @@ public sealed class SqliteNoteStore : ISyncStore, IDisposable
         var version = versionText is not null && int.TryParse(versionText, out var v) ? v : 0;
         if (version == 0)
         {
-            // Свежая установка: полная схема v6 сразу.
+            // Свежая установка: полная схема v7 сразу.
             cmd.CommandText = """
                 ALTER TABLE notes ADD COLUMN title_norm TEXT NOT NULL DEFAULT '';
                 ALTER TABLE notes ADD COLUMN body_norm TEXT NOT NULL DEFAULT '';
@@ -127,9 +127,24 @@ public sealed class SqliteNoteStore : ISyncStore, IDisposable
                     rev INTEGER NOT NULL,
                     content_hash TEXT NOT NULL,
                     PRIMARY KEY (note_id, rev, content_hash));
+                CREATE TABLE IF NOT EXISTS files(
+                    id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    mime TEXT NOT NULL DEFAULT '',
+                    size INTEGER NOT NULL DEFAULT 0,
+                    sha256 TEXT NOT NULL,
+                    stored_name TEXT NOT NULL,
+                    rev INTEGER NOT NULL DEFAULT 1,
+                    updated_at TEXT NOT NULL,
+                    author_device TEXT NOT NULL,
+                    is_deleted INTEGER NOT NULL DEFAULT 0);
+                CREATE INDEX IF NOT EXISTS idx_files_sha ON files(sha256);
+                CREATE TABLE IF NOT EXISTS file_syncstate(
+                    file_id TEXT PRIMARY KEY,
+                    sync_rev INTEGER NOT NULL DEFAULT 0);
                 """;
             cmd.ExecuteNonQuery();
-            SetValue(cmd, "schema_version", "6");
+            SetValue(cmd, "schema_version", "7");
         }
         else if (version == 1)
         {
@@ -215,6 +230,31 @@ public sealed class SqliteNoteStore : ISyncStore, IDisposable
                 "PRIMARY KEY (note_id, rev, content_hash));";
             cmd.ExecuteNonQuery();
             SetValue(cmd, "schema_version", "6");
+            version = 6;
+        }
+        if (version == 6)
+        {
+            // v6 -> v7: отдельные файлы (метаданные) + состояние их синхронизации.
+            // Существующие таблицы не трогаем; всё IF NOT EXISTS, идемпотентно.
+            cmd.CommandText = """
+                CREATE TABLE IF NOT EXISTS files(
+                    id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    mime TEXT NOT NULL DEFAULT '',
+                    size INTEGER NOT NULL DEFAULT 0,
+                    sha256 TEXT NOT NULL,
+                    stored_name TEXT NOT NULL,
+                    rev INTEGER NOT NULL DEFAULT 1,
+                    updated_at TEXT NOT NULL,
+                    author_device TEXT NOT NULL,
+                    is_deleted INTEGER NOT NULL DEFAULT 0);
+                CREATE INDEX IF NOT EXISTS idx_files_sha ON files(sha256);
+                CREATE TABLE IF NOT EXISTS file_syncstate(
+                    file_id TEXT PRIMARY KEY,
+                    sync_rev INTEGER NOT NULL DEFAULT 0);
+                """;
+            cmd.ExecuteNonQuery();
+            SetValue(cmd, "schema_version", "7");
         }
         tx.Commit();
     }

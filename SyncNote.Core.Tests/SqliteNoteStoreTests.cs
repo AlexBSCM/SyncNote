@@ -224,4 +224,98 @@ public sealed class SqliteNoteStoreTests
         }
         finally { File.Delete(big); }
     }
+
+    [TestMethod]
+    public void Migrate_V6_to_V7_Empty_CreatesFileTables()
+    {
+        var path = TempDb();
+        using (var raw = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={path}"))
+        {
+            raw.Open();
+            using var cmd = raw.CreateCommand();
+            // Минимальная v6: keyvalue + версия. Остальные таблицы v6 не нужны,
+            // миграция v6->v7 их не трогает; store откроется после RepairStoredNames,
+            // которому нужна attachments — создаём пустую.
+            cmd.CommandText = """
+                CREATE TABLE keyvalue(key TEXT PRIMARY KEY, value TEXT NOT NULL);
+                INSERT INTO keyvalue(key, value) VALUES('schema_version', '6');
+                CREATE TABLE notes(
+                    id TEXT PRIMARY KEY, rev INTEGER NOT NULL,
+                    title TEXT NOT NULL, body TEXT NOT NULL,
+                    updated_at TEXT NOT NULL, author_device TEXT NOT NULL,
+                    is_deleted INTEGER NOT NULL DEFAULT 0,
+                    title_norm TEXT NOT NULL DEFAULT '', body_norm TEXT NOT NULL DEFAULT '');
+                CREATE TABLE attachments(
+                    id TEXT PRIMARY KEY, note_id TEXT NOT NULL REFERENCES notes(id),
+                    file_name TEXT NOT NULL, mime TEXT NOT NULL,
+                    size INTEGER NOT NULL, sha256 TEXT NOT NULL, stored_name TEXT NOT NULL);
+                """;
+            cmd.ExecuteNonQuery();
+        }
+
+        using (var store = new SqliteNoteStore(path))
+        {
+            using var check = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={path}");
+            check.Open();
+            using var cmd = check.CreateCommand();
+            cmd.CommandText = "SELECT value FROM keyvalue WHERE key='schema_version';";
+            Assert.AreEqual("7", cmd.ExecuteScalar() as string);
+            cmd.CommandText = "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('files','file_syncstate');";
+            var tables = new List<string>();
+            using (var r = cmd.ExecuteReader())
+                while (r.Read()) tables.Add(r.GetString(0));
+            CollectionAssert.AreEquivalent(new[] { "files", "file_syncstate" }, tables);
+            cmd.CommandText = "SELECT name FROM sqlite_master WHERE type='index' AND name='idx_files_sha';";
+            Assert.IsNotNull(cmd.ExecuteScalar());
+            // Колонки files по контракту.
+            cmd.CommandText = "PRAGMA table_info(files);";
+            var cols = new List<string>();
+            using (var r = cmd.ExecuteReader())
+                while (r.Read()) cols.Add(r.GetString(1));
+            CollectionAssert.AreEquivalent(
+                new[] { "id", "name", "mime", "size", "sha256", "stored_name", "rev", "updated_at", "author_device", "is_deleted" },
+                cols);
+        }
+    }
+
+    [TestMethod]
+    public void Migrate_V6_to_V7_KeepsNotesData()
+    {
+        var path = TempDb();
+        var noteId = Guid.NewGuid().ToString("N");
+        using (var raw = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={path}"))
+        {
+            raw.Open();
+            using var cmd = raw.CreateCommand();
+            cmd.CommandText = """
+                CREATE TABLE keyvalue(key TEXT PRIMARY KEY, value TEXT NOT NULL);
+                INSERT INTO keyvalue(key, value) VALUES('schema_version', '6');
+                CREATE TABLE notes(
+                    id TEXT PRIMARY KEY, rev INTEGER NOT NULL,
+                    title TEXT NOT NULL, body TEXT NOT NULL,
+                    updated_at TEXT NOT NULL, author_device TEXT NOT NULL,
+                    is_deleted INTEGER NOT NULL DEFAULT 0,
+                    title_norm TEXT NOT NULL DEFAULT '', body_norm TEXT NOT NULL DEFAULT '');
+                CREATE TABLE attachments(
+                    id TEXT PRIMARY KEY, note_id TEXT NOT NULL REFERENCES notes(id),
+                    file_name TEXT NOT NULL, mime TEXT NOT NULL,
+                    size INTEGER NOT NULL, sha256 TEXT NOT NULL, stored_name TEXT NOT NULL);
+                """;
+            cmd.ExecuteNonQuery();
+            cmd.CommandText = "INSERT INTO notes(id, rev, title, body, updated_at, author_device, is_deleted, title_norm, body_norm) " +
+                "VALUES($id, 3, 'Живая', 'важная', '2026-01-01T00:00:00Z', 'dev1', 0, 'живая', 'важная');";
+            cmd.Parameters.AddWithValue("$id", noteId);
+            cmd.ExecuteNonQuery();
+        }
+
+        using (var store = new SqliteNoteStore(path))
+        {
+            var note = store.TryGet(Guid.Parse(noteId));
+            Assert.IsNotNull(note);
+            Assert.AreEqual("Живая", note!.Title);
+            Assert.AreEqual(3, note.Rev);
+            Assert.AreEqual(1, store.Search("живая").Count);
+            // Старые таблицы не тронуты миграцией: поиск и чтение работают.
+        }
+    }
 }
