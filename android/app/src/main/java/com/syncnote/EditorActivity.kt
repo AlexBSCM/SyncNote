@@ -125,6 +125,10 @@ class EditorActivity : AppCompatActivity() {
                 text = "Открыть"
                 setOnClickListener { openAttachment(att) }
             }
+            val save = Button(this).apply {
+                text = "Скачать"
+                setOnClickListener { downloadAttachment(att) }
+            }
             val del = Button(this).apply {
                 text = "×"
                 setOnClickListener {
@@ -134,9 +138,33 @@ class EditorActivity : AppCompatActivity() {
             }
             row.addView(label)
             row.addView(open)
+            row.addView(save)
             row.addView(del)
             box.addView(row)
         }
+    }
+
+    private var pendingDownload: Attachment? = null
+
+    private val saveFile = registerForActivityResult(
+        ActivityResultContracts.CreateDocument("*/*")) { uri: Uri? ->
+        val att = pendingDownload ?: return@registerForActivityResult
+        pendingDownload = null
+        if (uri == null) return@registerForActivityResult
+        try {
+            val src = File(repo.filesDir(), att.storedName)
+            contentResolver.openOutputStream(uri)?.use { out ->
+                src.inputStream().use { it.copyTo(out) }
+            }
+            toast("Сохранено: ${att.fileName}")
+        } catch (e: Exception) {
+            toast("Не удалось скачать: ${e.message}")
+        }
+    }
+
+    private fun downloadAttachment(att: Attachment) {
+        pendingDownload = att
+        saveFile.launch(att.fileName)
     }
 
     private fun openAttachment(att: Attachment) {

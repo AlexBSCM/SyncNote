@@ -122,6 +122,8 @@
                                                            VerticalAlignment="Center" />
                                                 <Button Content="Открыть" Tag="{Binding Id}" Width="60"
                                                         Click="OpenAttachment_Click" />
+                                                <Button Content="Скачать" Tag="{Binding Id}" Width="60" Margin="4,0,0,0"
+                                                        Click="DownloadAttachment_Click" />
                                                 <Button Content="×" Tag="{Binding Id}" Width="24" Margin="4,0,0,0"
                                                         Click="DeleteAttachment_Click" />
                                             </StackPanel>

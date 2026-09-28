@@ -586,6 +586,34 @@ public partial class MainWindow : Window
         }
     }
 
+    private void DownloadAttachment_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is System.Windows.Controls.Button btn && btn.Tag is Guid attId
+            && CurrentNote() is Note note)
+        {
+            var att = _store.GetAttachments(note.Id).FirstOrDefault(a => a.Id == attId);
+            if (att is null)
+                return;
+            var dlg = new Microsoft.Win32.SaveFileDialog
+            {
+                FileName = att.FileName,
+            };
+            if (dlg.ShowDialog() != true)
+                return;
+            try
+            {
+                System.IO.File.Copy(
+                    System.IO.Path.Combine(_store.FilesDirectory, att.StoredName),
+                    dlg.FileName, overwrite: true);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, ex.Message, "Не удалось скачать вложение",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+    }
+
     private void DeleteAttachment_Click(object sender, RoutedEventArgs e)
     {
         if (sender is System.Windows.Controls.Button btn && btn.Tag is Guid attId)
