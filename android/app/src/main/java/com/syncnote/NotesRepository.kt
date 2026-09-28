@@ -330,6 +330,27 @@ class NotesRepository(ctx: Context) : SyncStore {
         }
     }
 
+    override fun sweepOrphanedFiles(): Int {
+        if (!FeatureFlags.enableSeparateFiles) return 0
+        data class Victim(val sha: String, val stored: String)
+        val victims = mutableListOf<Victim>()
+        db.readableDatabase.rawQuery(
+            "SELECT sha256, stored_name FROM files WHERE is_deleted=1", null).use { c ->
+            while (c.moveToNext()) victims += Victim(c.getString(0), c.getString(1))
+        }
+        var removed = 0
+        for ((sha, stored) in victims) {
+            // Живая ссылка осталась (другая строка с тем же sha) — не трогаем.
+            if (hasLiveReferencesToSha(sha)) continue
+            val f = File(filesRoot, stored)
+            if (!f.exists()) continue
+            try {
+                if (f.delete()) removed++
+            } catch (_: Exception) { }
+        }
+        return removed
+    }
+
     override fun exportFiles(): List<SyncFileDto> {
         requireFilesEnabled()
         val ids = mutableListOf<String>()

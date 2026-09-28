@@ -907,6 +907,41 @@ public sealed class SqliteNoteStore : ISyncStore, IFileStore, IDisposable
         return cmd.ExecuteScalar() is not null;
     }
 
+    public int SweepOrphanedFiles()
+    {
+        if (!FeatureFlags.EnableSeparateFiles)
+            return 0;
+        using var cmd = _db.CreateCommand();
+        cmd.CommandText = "SELECT id, sha256, stored_name FROM files WHERE is_deleted = 1;";
+        var rows = new List<(string Id, string Sha, string Stored)>();
+        using (var reader = cmd.ExecuteReader())
+            while (reader.Read())
+                rows.Add((reader.GetString(0), reader.GetString(1), reader.GetString(2)));
+        int removed = 0;
+        foreach (var (id, sha, stored) in rows)
+        {
+            // Живая ссылка осталась (другая строка с тем же sha) — не трогаем.
+            if (HasLiveReferencesToSha(sha))
+                continue;
+            // stored_name у файлов подсистемы всегда == sha, но проверяем
+            // по колонке, а не по предположению.
+            var path = Path.Combine(_filesDir, stored);
+            if (!File.Exists(path))
+                continue;
+            try
+            {
+                File.Delete(path);
+                removed++;
+            }
+            catch (IOException)
+            {
+                // Занят другим процессом — попробуем в следующий раз.
+                continue;
+            }
+        }
+        return removed;
+    }
+
     public IReadOnlyList<SyncFileDto> ExportFiles()
     {
         RequireFilesEnabled();

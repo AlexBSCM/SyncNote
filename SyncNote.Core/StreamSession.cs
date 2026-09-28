@@ -119,6 +119,12 @@ public static class StreamSession
                 }
             }
             await Frame.WriteAsync(stream, new JsonObject { ["t"] = "sync_end" }, ct);
+            if (store is IFileStore fileStore)
+            {
+                int purged = fileStore.SweepOrphanedFiles();
+                if (purged > 0)
+                    ServerLog.Line($"purge removed={purged}");
+            }
             ServerLog.Line("session ok");
         }
         catch (IOException ex) { ServerLog.Line($"session io: {ex.GetType().Name}"); }
@@ -341,6 +347,12 @@ public static class StreamSession
                 }
                 // Неизвестный тип — тихий игнор с Warning.
                 ServerLog.Line($"warning: unknown frame {type}, ignored");
+            }
+            if (store is IFileStore fileStore)
+            {
+                int purged = fileStore.SweepOrphanedFiles();
+                if (purged > 0)
+                    ServerLog.Line($"purge removed={purged}");
             }
             return new SyncSessionResult(pushed, pulled, conflicts);
         }

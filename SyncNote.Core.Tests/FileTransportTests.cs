@@ -301,4 +301,57 @@ public sealed class FileTransportTests
         cts.Cancel();
         await run;
     }
+
+    [TestMethod]
+    public async Task FullLifecycle_CreateSyncDeleteSync_PurgeCleansDisk()
+    {
+        using var serverStore = new SqliteNoteStore(TempDb("srv"));
+        using var clientStore = new SqliteNoteStore(TempDb("cli"));
+        var payload = new byte[] { 21, 22, 23 };
+        var src = WriteSource(payload);
+        Guid fileId;
+        try { fileId = serverStore.AddFile(src).Id; }
+        finally { Directory.Delete(Path.GetDirectoryName(src)!, recursive: true); }
+
+        using var pairing = PairingService.Open(TempDb("pair"));
+        var (token, _) = pairing.IssueToken();
+        using var server = new SyncServer(serverStore, pairing, 0);
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        var run = server.RunAsync(cts.Token);
+        var mkClient = (string? tok) => new SyncClient("127.0.0.1", server.Port,
+            clientStore.DeviceId, "Phone", tok);
+
+        // 1. Создание долетает с байтами.
+        var s1 = await mkClient(token).PushAndPullAsync(clientStore, cts.Token);
+        Assert.AreEqual(1, s1.Pulled);
+        var got = clientStore.GetFiles();
+        Assert.AreEqual(1, got.Count);
+        CollectionAssert.AreEqual(payload,
+            File.ReadAllBytes(Path.Combine(clientStore.FilesDirectory, got[0].StoredName)));
+
+        // 2. Удаление на сервере долетает tombstone.
+        Assert.IsTrue(serverStore.DeleteFile(fileId));
+        var s2 = await mkClient(null).PushAndPullAsync(clientStore, cts.Token);
+        var tomb = clientStore.TryGetFile(fileId);
+        Assert.IsNotNull(tomb);
+        Assert.IsTrue(tomb!.IsDeleted);
+
+        // 3. Purge после сессий снёс физические файлы с обеих сторон,
+        //    строки-tombstone остались.
+        string serverPhys = Path.Combine(serverStore.FilesDirectory,
+            serverStore.TryGetFile(fileId)!.StoredName);
+        string clientPhys = Path.Combine(clientStore.FilesDirectory, got[0].StoredName);
+        Assert.IsFalse(File.Exists(serverPhys), "server physical cleaned by session purge");
+        Assert.IsFalse(File.Exists(clientPhys), "client physical cleaned by session purge");
+        Assert.IsNotNull(serverStore.TryGetFile(fileId));
+        Assert.IsNotNull(clientStore.TryGetFile(fileId));
+
+        // 4. Третья сессия стабильна и ничего не воскрешает.
+        var s3 = await mkClient(null).PushAndPullAsync(clientStore, cts.Token);
+        Assert.AreEqual(0, s3.Pushed);
+        Assert.AreEqual(0, s3.Pulled);
+        Assert.AreEqual(0, clientStore.GetFiles().Count);
+        cts.Cancel();
+        await run;
+    }
 }

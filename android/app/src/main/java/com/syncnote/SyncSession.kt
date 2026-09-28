@@ -168,6 +168,11 @@ class SyncSession(
             } finally {
                 discardPending(pending)
             }
+            try {
+                val purged = store.sweepOrphanedFiles()
+                if (purged > 0)
+                    android.util.Log.i("SyncNote", "purge removed=$purged")
+            } catch (_: Exception) { }
             return SyncSessionResult(pushed, pulled, conflicts)
         }
     }

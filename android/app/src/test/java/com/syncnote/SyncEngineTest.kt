@@ -16,6 +16,7 @@ class SyncEngineTest {
         val seen = mutableSetOf<Triple<String, Long, String>>()
         val sepFiles = mutableMapOf<String, FileEntry>()
         val fileSyncs = mutableMapOf<String, Long>()
+        val physicalFiles = mutableSetOf<String>()
         val dir: File = createTempDir("fakefiles")
 
         override fun tryGet(id: String) = notes[id]
@@ -68,6 +69,7 @@ class SyncEngineTest {
                 mime = dto.mime, sizeBytes = dto.size, sha256 = dto.sha256,
                 storedName = dto.sha256, rev = dto.rev, updatedAt = dto.updatedAt,
                 authorDeviceId = dto.author, isDeleted = dto.isDeleted)
+            physicalFiles += dto.sha256.lowercase()
         }
         override fun updateFullFile(dto: SyncFileDto) = insertFullFile(dto)
         override fun addFile(name: String, mime: String, content: ByteArray): FileEntry {
@@ -79,6 +81,7 @@ class SyncEngineTest {
                 sizeBytes = content.size.toLong(), sha256 = hex, storedName = hex,
                 rev = 1, authorDeviceId = deviceId())
             sepFiles[e.id] = e
+            physicalFiles += hex
             return e
         }
         override fun deleteFile(id: String): Boolean {
@@ -93,6 +96,19 @@ class SyncEngineTest {
         override fun setFileSyncRev(fileId: String, rev: Long) { fileSyncs[fileId] = rev }
         override fun hasLiveReferencesToSha(sha256: String) =
             sepFiles.values.any { it.sha256.equals(sha256, ignoreCase = true) && !it.isDeleted }
+        override fun sweepOrphanedFiles(): Int {
+            if (!com.syncnote.FeatureFlags.enableSeparateFiles) return 0
+            var removed = 0
+            val tombShas = sepFiles.values
+                .filter { it.isDeleted }
+                .map { it.sha256.lowercase() }
+                .toSet()
+            for (sha in tombShas) {
+                if (hasLiveReferencesToSha(sha)) continue
+                if (physicalFiles.remove(sha)) removed++
+            }
+            return removed
+        }
         override fun exportFiles() = sepFiles.values.map { e ->
             SyncFileDto(id = e.id, rev = e.rev, baseRev = getFileSyncRev(e.id),
                 name = e.name, mime = e.mime, size = e.sizeBytes,
@@ -291,6 +307,45 @@ class SyncEngineTest {
                 s.deleteFile("y")
                 fail("ожидалось исключение")
             } catch (e: IllegalStateException) { }
+        } finally {
+            com.syncnote.FeatureFlags.enableSeparateFiles = true
+        }
+    }
+
+    @Test fun purge_removesOrphaned_keepsRows() {
+        val s = FakeStore()
+        val e = s.addFile("p.bin", "application/octet-stream", byteArrayOf(3, 4))
+        assertTrue(s.physicalFiles.contains(e.sha256))
+        s.deleteFile(e.id)
+        assertEquals(1, s.sweepOrphanedFiles())
+        assertFalse(s.physicalFiles.contains(e.sha256))
+        // Строка-tombstone осталась.
+        assertTrue(s.tryGetFile(e.id)!!.isDeleted)
+        assertEquals(0, s.sweepOrphanedFiles())
+    }
+
+    @Test fun purge_keepsPhysical_whenOtherLiveRefExists() {
+        val s = FakeStore()
+        val a = s.addFile("a.bin", "application/octet-stream", byteArrayOf(5))
+        // Вторая строка на тот же контент (дедуп): имитируем напрямую.
+        val b = s.addFile("b.bin", "application/octet-stream", byteArrayOf(5))
+        assertEquals(a.sha256, b.sha256)
+        s.deleteFile(a.id)
+        assertEquals(0, s.sweepOrphanedFiles())
+        assertTrue(s.physicalFiles.contains(a.sha256))
+        s.deleteFile(b.id)
+        assertEquals(1, s.sweepOrphanedFiles())
+        assertFalse(s.physicalFiles.contains(a.sha256))
+    }
+
+    @Test fun purge_flagDisabled_noOp() {
+        val s = FakeStore()
+        val e = s.addFile("z.bin", "application/octet-stream", byteArrayOf(6))
+        s.deleteFile(e.id)
+        com.syncnote.FeatureFlags.enableSeparateFiles = false
+        try {
+            assertEquals(0, s.sweepOrphanedFiles())
+            assertTrue(s.physicalFiles.contains(e.sha256))
         } finally {
             com.syncnote.FeatureFlags.enableSeparateFiles = true
         }

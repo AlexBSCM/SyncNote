@@ -19,4 +19,10 @@ public interface IFileStore
     IReadOnlyList<SyncFileDto> ExportFiles();
     (ApplyResult Result, ConflictInfo? Conflict) ApplyFile(
         SyncFileDto dto, Func<string, byte[]?> fileBytes);
+
+    // Waterfall purge: удаляет ФИЗИЧЕСКИЕ файлы tombstone-строк, на которые
+    // нет живых ссылок. Сами строки-tombstone остаются (нужны для
+    // распространения удаления). Возвращает число удалённых файлов.
+    // При выключенном флаге — no-op, возвращает 0.
+    int SweepOrphanedFiles();
 }

@@ -24,6 +24,7 @@ interface SyncStore {
     fun setFileSyncRev(fileId: String, rev: Long)
     fun hasLiveReferencesToSha(sha256: String): Boolean
     fun exportFiles(): List<SyncFileDto>
+    fun sweepOrphanedFiles(): Int
     fun applyFile(dto: SyncFileDto, fileBytes: (String) -> ByteArray?): Pair<ApplyResult, ConflictInfo?> {
         return SyncEngine.applyFile(this, dto, fileBytes)
     }

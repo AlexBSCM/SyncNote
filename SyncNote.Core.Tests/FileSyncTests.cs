@@ -219,4 +219,78 @@ public sealed class FileSyncTests
         }
         finally { Directory.Delete(Path.GetDirectoryName(src)!, recursive: true); }
     }
+
+    [TestMethod]
+    public void Purge_RemovesOrphanedPhysical_KeepsTombstoneRows()
+    {
+        using var store = new SqliteNoteStore(TempDb());
+        var src = WriteSource("p.bin", new byte[] { 3, 4 });
+        try
+        {
+            var e = store.AddFile(src);
+            var phys = Path.Combine(store.FilesDirectory, e.StoredName);
+            Assert.IsTrue(File.Exists(phys));
+
+            store.DeleteFile(e.Id);
+            // Физический файл ещё на месте до purge.
+            Assert.IsTrue(File.Exists(phys));
+
+            Assert.AreEqual(1, store.SweepOrphanedFiles());
+            Assert.IsFalse(File.Exists(phys));
+            // Строка-tombstone осталась для распространения удаления.
+            var tomb = store.TryGetFile(e.Id);
+            Assert.IsNotNull(tomb);
+            Assert.IsTrue(tomb!.IsDeleted);
+
+            // Повторный purge идемпотентен.
+            Assert.AreEqual(0, store.SweepOrphanedFiles());
+        }
+        finally { Directory.Delete(Path.GetDirectoryName(src)!, recursive: true); }
+    }
+
+    [TestMethod]
+    public void Purge_KeepsPhysical_WhenOtherLiveRefExists()
+    {
+        using var store = new SqliteNoteStore(TempDb());
+        var src = WriteSource("q.bin", new byte[] { 5 });
+        try
+        {
+            var a = store.AddFile(src);
+            var b = store.AddFile(src); // дедуп: один физический файл
+            Assert.AreEqual(a.StoredName, b.StoredName);
+
+            store.DeleteFile(a.Id);
+            // Вторая строка жива — физический файл трогать нельзя.
+            Assert.AreEqual(0, store.SweepOrphanedFiles());
+            Assert.IsTrue(File.Exists(Path.Combine(store.FilesDirectory, a.StoredName)));
+
+            store.DeleteFile(b.Id);
+            Assert.AreEqual(1, store.SweepOrphanedFiles());
+            Assert.IsFalse(File.Exists(Path.Combine(store.FilesDirectory, a.StoredName)));
+        }
+        finally { Directory.Delete(Path.GetDirectoryName(src)!, recursive: true); }
+    }
+
+    [TestMethod]
+    public void Purge_FlagDisabled_NoOp()
+    {
+        using var store = new SqliteNoteStore(TempDb());
+        var src = WriteSource("z.bin", new byte[] { 6 });
+        try
+        {
+            var e = store.AddFile(src);
+            store.DeleteFile(e.Id);
+            FeatureFlags.EnableSeparateFiles = false;
+            try
+            {
+                Assert.AreEqual(0, store.SweepOrphanedFiles());
+                Assert.IsTrue(File.Exists(Path.Combine(store.FilesDirectory, e.StoredName)));
+            }
+            finally
+            {
+                FeatureFlags.EnableSeparateFiles = true;
+            }
+        }
+        finally { Directory.Delete(Path.GetDirectoryName(src)!, recursive: true); }
+    }
 }
