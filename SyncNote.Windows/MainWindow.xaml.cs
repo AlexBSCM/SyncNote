@@ -24,6 +24,8 @@ public partial class MainWindow : Window
         // телефон пушит изменения сам, кнопки не нужны.
         _server = new SyncServer(_store, _pairing, SyncPort);
         _serverTask = _server.RunAsync(_serverCts.Token);
+        // Локальный клиент — тот же пользователь: доверяем себе для петли.
+        _pairing.TrustDevice(_store.DeviceId, Environment.MachineName);
         ConnectionStatus.Text = $"Принимаю подключения: {SyncPort}";
         SyncDeviceBox.Text = Environment.MachineName;
         PairServerInfo.Text = $"Принимаю подключения: 127.0.0.1:{SyncPort}";
