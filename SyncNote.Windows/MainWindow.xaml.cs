@@ -49,7 +49,7 @@ public partial class MainWindow : Window
     }
 
     private bool _suppressSelection;
-    private List<SelectableNote> _managed = new();
+    private List<SelectableNote> _notesWrap = new();
 
     private sealed class SelectableNote(Note note, bool selected) : System.ComponentModel.INotifyPropertyChanged
     {
