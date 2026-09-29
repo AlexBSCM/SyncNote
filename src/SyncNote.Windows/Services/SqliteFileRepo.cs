@@ -95,6 +95,44 @@ public sealed class SqliteFileRepo : IFileRepo
         return Task.CompletedTask;
     }
 
+    public Task InsertFullAsync(FileEntry e)
+    {
+        using var conn = Open();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "INSERT INTO files(id, name, mime, size, sha256,"
+            + " stored_name, rev, updated_at, author_device, is_deleted)"
+            + " VALUES($id, $n, $m, $s, $h, $sn, $r, $u, $d, $del)";
+        Bind(cmd, e);
+        cmd.ExecuteNonQuery();
+        return Task.CompletedTask;
+    }
+
+    public Task UpdateFullAsync(FileEntry e)
+    {
+        using var conn = Open();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "UPDATE files SET name = $n, mime = $m, size = $s,"
+            + " sha256 = $h, stored_name = $sn, rev = $r, updated_at = $u,"
+            + " author_device = $d, is_deleted = $del WHERE id = $id";
+        Bind(cmd, e);
+        cmd.ExecuteNonQuery();
+        return Task.CompletedTask;
+    }
+
+    private static void Bind(SqliteCommand cmd, FileEntry e)
+    {
+        cmd.Parameters.AddWithValue("$id", e.Id);
+        cmd.Parameters.AddWithValue("$n", e.Name);
+        cmd.Parameters.AddWithValue("$m", e.Mime);
+        cmd.Parameters.AddWithValue("$s", e.SizeBytes);
+        cmd.Parameters.AddWithValue("$h", e.Sha256);
+        cmd.Parameters.AddWithValue("$sn", e.StoredName);
+        cmd.Parameters.AddWithValue("$r", e.Rev);
+        cmd.Parameters.AddWithValue("$u", e.UpdatedAt);
+        cmd.Parameters.AddWithValue("$d", e.AuthorDeviceId);
+        cmd.Parameters.AddWithValue("$del", e.IsDeleted ? 1 : 0);
+    }
+
     private bool HasLiveSha(string sha)
     {
         using var conn = Open();

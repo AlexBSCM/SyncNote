@@ -46,7 +46,8 @@ public sealed class SqliteNoteRepo : INoteRepo
 
     public Task<string> CreateAsync(NoteEntry note)
     {
-        string id = Guid.NewGuid().ToString("N");
+        // Синк передаёт готовый id; UI — пустой (тогда генерируем).
+        string id = string.IsNullOrEmpty(note.Id) ? Guid.NewGuid().ToString("N") : note.Id;
         string now = UtcNow();
         using var conn = Open();
         using var cmd = conn.CreateCommand();
@@ -105,6 +106,39 @@ public sealed class SqliteNoteRepo : INoteRepo
         cmd.Parameters.AddWithValue("$id", id);
         cmd.ExecuteNonQuery();
         return Task.CompletedTask;
+    }
+
+    public Task InsertFullAsync(NoteEntry e)
+    {
+        using var conn = Open();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "INSERT INTO notes(id, title, body, rev, updated_at,"
+            + " author_device, is_deleted) VALUES($id, $t, $b, $r, $u, $d, $del)";
+        Bind(cmd, e);
+        cmd.ExecuteNonQuery();
+        return Task.CompletedTask;
+    }
+
+    public Task UpdateFullAsync(NoteEntry e)
+    {
+        using var conn = Open();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "UPDATE notes SET title = $t, body = $b, rev = $r,"
+            + " updated_at = $u, author_device = $d, is_deleted = $del WHERE id = $id";
+        Bind(cmd, e);
+        cmd.ExecuteNonQuery();
+        return Task.CompletedTask;
+    }
+
+    private static void Bind(SqliteCommand cmd, NoteEntry e)
+    {
+        cmd.Parameters.AddWithValue("$id", e.Id);
+        cmd.Parameters.AddWithValue("$t", e.Title);
+        cmd.Parameters.AddWithValue("$b", e.Body);
+        cmd.Parameters.AddWithValue("$r", e.Rev);
+        cmd.Parameters.AddWithValue("$u", e.UpdatedAt);
+        cmd.Parameters.AddWithValue("$d", e.AuthorDeviceId);
+        cmd.Parameters.AddWithValue("$del", e.IsDeleted ? 1 : 0);
     }
 
     private SqliteConnection Open()

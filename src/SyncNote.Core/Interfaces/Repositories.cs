@@ -24,13 +24,18 @@ public interface INoteRepo
     Task<NoteEntry?> GetByIdAsync(string id);
     Task<List<NoteEntry>> GetAllAsync(bool includeDeleted = false);
     // Создаёт запись (rev=1, updated_at/author выставляет реализация).
-    // Возвращает ID.
+    // Если note.Id непустой — используется как есть (нужно синку для
+    // вставки строк с известными id); иначе генерируется. Возвращает ID.
     Task<string> CreateAsync(NoteEntry note);
     // Обновляет при изменениях (rev+1 внутри); без изменений — no-op.
     // При гонке ревизий бросает InvalidOperationException.
     Task UpdateAsync(NoteEntry note);
     // Tombstone: is_deleted=1, rev+1.
     Task SoftDeleteAsync(string id);
+    // Полная вставка/перезапись строки как есть (ид, rev, автор, дата) —
+    // только для sync-движка; UI пользуется Create/Update.
+    Task InsertFullAsync(NoteEntry e);
+    Task UpdateFullAsync(NoteEntry e);
 }
 
 public interface IFileRepo
@@ -42,4 +47,7 @@ public interface IFileRepo
     Task<string> AddFileAsync(FileEntry metadata, string localTempPathOrUri);
     // Tombstone: is_deleted=1, rev+1 (байты чистит purge, не этот метод).
     Task SoftDeleteAsync(string id);
+    // Полная вставка/перезапись строки как есть — только для sync-движка.
+    Task InsertFullAsync(FileEntry e);
+    Task UpdateFullAsync(FileEntry e);
 }
