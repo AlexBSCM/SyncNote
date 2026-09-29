@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<paths>
-    <files-path name="files" path="files/" />
-    <!-- Корень filesDir: отдельные файлы хранятся как filesDir/{sha256}. -->
-    <files-path name="files-root" path="." />
-</paths>
