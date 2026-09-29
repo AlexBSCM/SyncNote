@@ -50,13 +50,14 @@ public sealed class SyncEngine(
     }
 
     public async Task<SyncResult> RunSessionAsync(
-        ITransport t, bool isInitiator, CancellationToken ct = default)
+        ITransport t, bool isInitiator, CancellationToken ct = default,
+        string? token = null, string? expectedToken = null)
     {
         Directory.CreateDirectory(tempDir);
         var res = new SyncResult();
         try
         {
-            await HelloPhaseAsync(t, isInitiator, ct);
+            await HelloPhaseAsync(t, isInitiator, ct, token, expectedToken);
             await KnowledgePhaseAsync(t, isInitiator, ct);
             // Строгое чередование (иначе обе стороны упрутся в чтение):
             // инициатор пушит первым, респондер — вторым.
@@ -84,18 +85,26 @@ public sealed class SyncEngine(
 
     // ---- фазы ----
 
-    private async Task HelloPhaseAsync(ITransport t, bool initiator, CancellationToken ct)
+    private async Task HelloPhaseAsync(
+        ITransport t, bool initiator, CancellationToken ct,
+        string? token, string? expectedToken)
     {
         if (initiator)
         {
-            await t.SendAsync(new JsonObject
+            var hello = new JsonObject
             {
                 ["t"] = "hello",
                 ["deviceId"] = deviceId,
                 ["schemaVersion"] = SchemaVersion,
                 ["caps"] = new JsonArray(FilesCap),
-            }.ToJsonString(), ct);
+            };
+            if (token is not null)
+                hello["token"] = token; // токен в лог не пишем нигде
+            await t.SendAsync(hello.ToJsonString(), ct);
             var g = Frame(await t.ReceiveAsync(ct));
+            if (Type(g) == "hello_error")
+                throw new HelloRejectedException(
+                    g["reason"]?.GetValue<string>() ?? "отказ без причины");
             if (Type(g) != "hello_ok")
                 throw new IOException("Ожидался hello_ok.");
             CheckVersion(g);
@@ -106,7 +115,25 @@ public sealed class SyncEngine(
             var h = Frame(await t.ReceiveAsync(ct));
             if (Type(h) != "hello")
                 throw new IOException("Ожидался hello.");
-            CheckVersion(h);
+            if (h["schemaVersion"]?.GetValue<int>() != SchemaVersion)
+            {
+                await t.SendAsync(new JsonObject
+                {
+                    ["t"] = "hello_error",
+                    ["reason"] = "version mismatch",
+                }.ToJsonString(), ct);
+                CheckVersion(h); // бросит понятный IOException
+            }
+            if (expectedToken is not null
+                && h["token"]?.GetValue<string>() != expectedToken)
+            {
+                await t.SendAsync(new JsonObject
+                {
+                    ["t"] = "hello_error",
+                    ["reason"] = "bad token",
+                }.ToJsonString(), ct);
+                throw new HelloRejectedException("bad token");
+            }
             _peerFilesOn = Caps(h).Contains(FilesCap);
             await t.SendAsync(new JsonObject
             {

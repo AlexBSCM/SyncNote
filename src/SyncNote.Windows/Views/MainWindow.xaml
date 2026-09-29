@@ -1,0 +1,75 @@
+<Window x:Class="SyncNote.Windows.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:SyncNote.Windows.Views"
+        Title="SyncNote" Height="600" Width="900" MinHeight="480" MinWidth="720"
+        WindowStartupLocation="CenterScreen">
+    <DockPanel>
+        <Menu DockPanel.Dock="Top">
+            <MenuItem Header="_Файл">
+                <MenuItem Header="Сопряжение с телефоном..." Command="{Binding ShowPairingCommand}"/>
+                <Separator/>
+                <MenuItem Header="_Выход" Command="{Binding ExitCommand}"/>
+            </MenuItem>
+            <MenuItem Header="_Справка">
+                <MenuItem Header="О программе"/>
+            </MenuItem>
+        </Menu>
+
+        <DockPanel>
+            <StatusBar DockPanel.Dock="Bottom">
+                <StatusBarItem>
+                    <TextBlock x:Name="StatusText" Text="Готово"/>
+                </StatusBarItem>
+            </StatusBar>
+
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="300"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Sidebar: Notes list -->
+                <Border Grid.Column="0" BorderBrush="#E0E0E0" BorderThickness="0,0,1,0">
+                    <Grid Margin="12">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                            <Button Content="＋ Новая заметка" Command="{Binding AddNoteCommand}"/>
+                            <Button Content="⚙ Настройки" Margin="8,0,0,0" Command="{Binding OpenSettingsCommand}"/>
+                            <Button Content="📱 Сопряжение..." Margin="8,0,0,0" Command="{Binding ShowPairingCommand}"/>
+                        </StackPanel>
+
+                        <TextBox Grid.Row="1" x:Name="SearchBox" Margin="0,0,0,8" 
+                                 Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}"
+                                 TextChanged="SearchBox_TextChanged"/>
+
+                        <ListBox x:Name="NotesList" Grid.Row="2" 
+                                 ItemsSource="{Binding Notes}"
+                                 SelectedItem="{Binding SelectedNote, Mode=TwoWay}"
+                                 SelectionChanged="NotesList_SelectionChanged">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal" Margin="0,2">
+                                        <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}" VerticalAlignment="Center"/>
+                                        <StackPanel Margin="8,0,0,0">
+                                            <TextBlock Text="{Binding Note.Title}" FontWeight="Bold" TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Text="{Binding Note.UpdatedAt, StringFormat='{}{0:dd.MM.yyyy HH:mm}'}" FontSize="11" Foreground="#888"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Grid>
+                </Border>
+
+                <!-- Editor / Settings / Pairing panel -->
+                <ContentControl Grid.Column="1" Content="{Binding CurrentView}"/>
+            </Grid>
+        </DockPanel>
+    </DockPanel>
+</Window>

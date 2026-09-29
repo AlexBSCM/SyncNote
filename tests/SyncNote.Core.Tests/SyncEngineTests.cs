@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Sockets;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using SyncNote.Core;
 using SyncNote.Core.Models;
 using SyncNote.Core.Services;
 using SyncNote.Windows.Services;
@@ -35,7 +36,8 @@ public sealed class SyncEngineTests
                 Path.Combine(Dir, "tmp"));
         }
 
-        public async Task<SyncResult> SyncWith(Node peer)
+        public async Task<SyncResult> SyncWith(
+            Node peer, string? clientToken = null, string? serverExpected = null)
         {
             // Страховка от дедлока протокола: висим не дольше 60 с.
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
@@ -47,8 +49,10 @@ public sealed class SyncEngineTests
                 var clientTask = TcpFrameTransport.ConnectAsync("127.0.0.1", port, cts.Token);
                 await using var serverT = await TcpFrameTransport.AcceptAsync(listener, cts.Token);
                 await using var clientT = await clientTask;
-                var serverRun = peer.Engine.RunSessionAsync(serverT, isInitiator: false, cts.Token);
-                var clientRun = Engine.RunSessionAsync(clientT, isInitiator: true, cts.Token);
+                var serverRun = peer.Engine.RunSessionAsync(
+                    serverT, isInitiator: false, cts.Token, expectedToken: serverExpected);
+                var clientRun = Engine.RunSessionAsync(
+                    clientT, isInitiator: true, cts.Token, token: clientToken);
                 await Task.WhenAll(serverRun, clientRun);
                 return await clientRun;
             }
@@ -136,6 +140,26 @@ public sealed class SyncEngineTests
         Assert.AreEqual(payload.Length, got.SizeBytes);
         string want = SyncNote.Core.Utils.HashUtils.ComputeSha256(payload);
         Assert.AreEqual(want, got.Sha256);
+    }
+
+    [TestMethod]
+    public async Task Token_WrongToken_RejectedCleanly()
+    {
+        using var a = new Node("a");
+        using var b = new Node("b");
+        await Assert.ThrowsExceptionAsync<HelloRejectedException>(() =>
+            a.SyncWith(b, clientToken: "bad", serverExpected: "good"));
+    }
+
+    [TestMethod]
+    public async Task Token_RightToken_FullSync()
+    {
+        using var a = new Node("a");
+        using var b = new Node("b");
+        string id = await a.Notes.CreateAsync(new NoteEntry { Title = "t", Body = "b" });
+        var r = await a.SyncWith(b, clientToken: "s3cret", serverExpected: "s3cret");
+        Assert.AreEqual(1, r.Pushed);
+        Assert.IsNotNull(await b.Notes.GetByIdAsync(id));
     }
 
     [TestMethod]

@@ -2,6 +2,7 @@ package com.syncnote.v2.domain
 
 import com.syncnote.v2.data.HashUtils
 import com.syncnote.v2.network.FrameTransport
+import com.syncnote.v2.network.HelloRejectedException
 import com.syncnote.v2.network.SyncNetworkException
 import org.json.JSONArray
 import org.json.JSONObject
@@ -50,11 +51,16 @@ class SyncEngine(
     private data class PendingBytes(var path: String, var declared: Long, var written: Long = 0)
     private val pending = mutableMapOf<String, PendingBytes>()
 
-    fun runSession(t: FrameTransport, isInitiator: Boolean): SyncResult {
+    fun runSession(
+        t: FrameTransport,
+        isInitiator: Boolean,
+        token: String? = null,
+        expectedToken: String? = null
+    ): SyncResult {
         tempDir.mkdirs()
         val res = SyncResult()
         try {
-            helloPhase(t, isInitiator)
+            helloPhase(t, isInitiator, token, expectedToken)
             knowledgePhase(t, isInitiator)
             if (isInitiator) {
                 pushPhase(t, res)
@@ -76,18 +82,35 @@ class SyncEngine(
 
     // ---- фазы ----
 
-    private fun helloPhase(t: FrameTransport, initiator: Boolean) {
+    private fun helloPhase(
+        t: FrameTransport,
+        initiator: Boolean,
+        token: String?,
+        expectedToken: String?
+    ) {
         if (initiator) {
-            t.send(obj("t" to "hello", "deviceId" to deviceId,
-                "schemaVersion" to SCHEMA_VERSION, "caps" to arr(FILES_CAP)).toString())
+            val hello = obj("t" to "hello", "deviceId" to deviceId,
+                "schemaVersion" to SCHEMA_VERSION, "caps" to arr(FILES_CAP))
+            if (token != null) hello.put("token", token)
+            t.send(hello.toString())
             val g = frame(t.receive() ?: throw SyncNetworkException("Пир закрылся на hello."))
+            if (g.type() == "hello_error")
+                throw HelloRejectedException(g.optString("reason", "отказ без причины"))
             if (g.type() != "hello_ok") throw IOException("Ожидался hello_ok.")
             checkVersion(g)
             peerFilesOn = caps(g).contains(FILES_CAP)
         } else {
             val h = frame(t.receive() ?: throw SyncNetworkException("Пир закрылся на hello."))
             if (h.type() != "hello") throw IOException("Ожидался hello.")
-            checkVersion(h)
+            if (h.optInt("schemaVersion", -1) != SCHEMA_VERSION) {
+                t.send(obj("t" to "hello_error",
+                    "reason" to "version mismatch").toString())
+                checkVersion(h) // бросит понятный IOException
+            }
+            if (expectedToken != null && h.optString("token", "") != expectedToken) {
+                t.send(obj("t" to "hello_error", "reason" to "bad token").toString())
+                throw HelloRejectedException("bad token")
+            }
             peerFilesOn = caps(h).contains(FILES_CAP)
             t.send(obj("t" to "hello_ok", "deviceId" to deviceId,
                 "schemaVersion" to SCHEMA_VERSION, "caps" to arr(FILES_CAP)).toString())

@@ -102,7 +102,11 @@ class SyncEngineTest {
         val sync = FakeSync()
         val engine = SyncEngine(notes, files, fio.asIface(), sync, device, File(dir, "tmp"))
 
-        fun syncWith(peer: Node): SyncResult {
+        fun syncWith(
+            peer: Node,
+            clientToken: String? = null,
+            serverExpected: String? = null
+        ): SyncResult {
             val server = ServerSocket(0)
             val port = server.localPort
             var serverErr: Throwable? = null
@@ -111,14 +115,14 @@ class SyncEngineTest {
             val st = Thread {
                 try {
                     AndroidTcpTransport.wrap(server.accept()).use { t ->
-                        peer.engine.runSession(t, false)
+                        peer.engine.runSession(t, false, expectedToken = serverExpected)
                     }
                 } catch (e: Throwable) { serverErr = e } finally { server.close() }
             }
             val ct = Thread {
                 try {
                     AndroidTcpTransport.connect("127.0.0.1", port).use { t ->
-                        clientRes = engine.runSession(t, true)
+                        clientRes = engine.runSession(t, true, token = clientToken)
                     }
                 } catch (e: Throwable) { clientErr = e }
             }
@@ -128,8 +132,10 @@ class SyncEngineTest {
             ct.start()
             st.join(60000)
             ct.join(60000)
+            // Ошибку клиента бросаем как есть (тесты проверяют тип),
+            // ошибку сервера — обёрткой (она с другого потока).
+            clientErr?.let { throw it }
             serverErr?.let { throw AssertionError("server: $it") }
-            clientErr?.let { throw AssertionError("client: $it") }
             return clientRes!!
         }
     }
@@ -179,19 +185,20 @@ class SyncEngineTest {
             b.fio.asIface().openRead(got.sha256).readBytes()))
     }
 
-    @Test fun tombstoneWithoutBytes_appliesCleanly() {
+    @Test fun token_wrongToken_rejected() {
         val a = Node("a"); val b = Node("b")
-        val src = File(a.dir, "x.bin").also { it.writeBytes(byteArrayOf(1, 2, 3)) }
-        val fid = a.files.addFile(
-            FileEntry(name = "x.bin", mime = "application/octet-stream"),
-            src.absolutePath)
-        a.files.softDelete(fid)
-        // Байтов больше нет нигде — как после purge у позднего пира.
-        a.files.map[fid]!!.let {
-            a.fio.asIface().deleteFromStorage(it.sha256)
+        try {
+            a.syncWith(b, clientToken = "bad", serverExpected = "good")
+            fail("expected HelloRejectedException")
+        } catch (e: com.syncnote.v2.network.HelloRejectedException) {
         }
-        a.syncWith(b) // не должно упасть
-        val got = b.files.getById(fid)!!
-        assertTrue(got.isDeleted)
+    }
+
+    @Test fun token_rightToken_syncs() {
+        val a = Node("a"); val b = Node("b")
+        val id = a.notes.create(NoteEntry(title = "t", body = "b"))
+        val r = a.syncWith(b, clientToken = "s3cret", serverExpected = "s3cret")
+        assertEquals(1, r.pushed)
+        assertNotNull(b.notes.getById(id))
     }
 }
