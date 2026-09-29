@@ -12,14 +12,18 @@ class MainActivity : AppCompatActivity() {
         if (savedInstanceState == null) {
             showTab(NotesFragment())
         }
-        findViewById<BottomNavigationView>(R.id.bottomNav)
-            .setOnItemSelectedListener { item ->
-                when (item.itemId) {
-                    R.id.tab_settings -> showTab(SettingsFragment())
-                    else -> showTab(NotesFragment())
-                }
-                true
+        val bottomNav = findViewById<BottomNavigationView>(R.id.bottomNav)
+        // Вкладка «Файлы» — только при включённом флаге (этап F.7).
+        val filesOn = BuildConfig.ENABLE_SEPARATE_FILES && FeatureFlags.enableSeparateFiles
+        if (!filesOn) bottomNav.menu.removeItem(R.id.tab_files)
+        bottomNav.setOnItemSelectedListener { item ->
+            when (item.itemId) {
+                R.id.tab_settings -> showTab(SettingsFragment())
+                R.id.tab_files -> showTab(FilesListFragment())
+                else -> showTab(NotesFragment())
             }
+            true
+        }
     }
 
     private fun showTab(f: Fragment) {

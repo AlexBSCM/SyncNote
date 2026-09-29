@@ -24,4 +24,10 @@
     <string name="files_added">Файл добавлен.</string>
     <string name="files_deleted">Файл удалён.</string>
     <string name="files_add_failed">Не удалось добавить файл.</string>
+    <string name="files_already_exists">Такой файл уже есть в списке.</string>
+    <string name="files_load_failed">Не удалось загрузить файлы.</string>
+    <string name="files_not_found">Файл не найден.</string>
+    <string name="files_open_failed">Не удалось открыть файл.</string>
+    <string name="files_saved">Сохранено: %1$s</string>
+    <string name="files_save_failed">Не удалось сохранить.</string>
 </resources>
