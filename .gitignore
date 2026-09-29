@@ -1,0 +1,35 @@
+# Build artifacts
+bin/
+obj/
+build/
+.gradle/
+out/
+target/
+
+# IDE settings
+.vs/
+.idea/
+*.user
+*.suo
+*.cache
+*.log
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Android specific
+local.properties
+*.apk
+*.aab
+*.keystore
+!debug.keystore
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Secrets
+.env
+secrets.json
+config.local.yaml
