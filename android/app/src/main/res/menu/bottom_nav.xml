@@ -4,6 +4,9 @@
         android:id="@+id/tab_notes"
         android:title="Заметки" />
     <item
+        android:id="@+id/tab_files"
+        android:title="@string/tab_files" />
+    <item
         android:id="@+id/tab_settings"
         android:title="Настройки" />
 </menu>

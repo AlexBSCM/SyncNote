@@ -26,6 +26,8 @@ android {
     buildFeatures {
         // Нужен для BuildConfig.ENABLE_SEPARATE_FILES (AGP 8 по умолчанию не генерирует).
         buildConfig true
+        // Только новые экраны файлов (этап F.7); старый код на findViewById не трогаем.
+        viewBinding true
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17

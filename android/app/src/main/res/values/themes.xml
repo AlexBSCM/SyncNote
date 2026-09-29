@@ -5,4 +5,19 @@
         <item name="colorPrimaryDark">#303F9F</item>
         <item name="colorAccent">#FF4081</item>
     </style>
+
+    <!-- Изолированная MDC-тема только для новых экранов файлов (этап F.7).
+         Основная тема приложения не меняется. -->
+    <style name="Theme.SyncNote.Files" parent="Theme.MaterialComponents.Light.Bridge">
+        <item name="colorPrimary">@color/files_accent</item>
+        <item name="colorPrimaryDark">@color/files_accent_dark</item>
+        <item name="colorSecondary">@color/files_accent</item>
+        <item name="colorAccent">@color/files_accent</item>
+    </style>
+
+    <style name="Theme.SyncNote.FilesBottomSheet"
+        parent="Theme.MaterialComponents.Light.BottomSheetDialog">
+        <item name="colorPrimary">@color/files_accent</item>
+        <item name="colorSecondary">@color/files_accent</item>
+    </style>
 </resources>
