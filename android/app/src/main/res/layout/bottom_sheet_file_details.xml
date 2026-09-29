@@ -107,7 +107,8 @@
                 android:layout_width="0dp"
                 android:layout_weight="1"
                 android:layout_height="wrap_content"
-                android:text="@string/files_open" />
+                android:text="@string/files_open"
+                android:textAllCaps="false" />
 
             <Button
                 android:id="@+id/btnSaveAs"
@@ -115,7 +116,8 @@
                 android:layout_weight="1"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
-                android:text="@string/files_save_as" />
+                android:text="@string/files_save_as"
+                android:textAllCaps="false" />
 
             <Button
                 android:id="@+id/btnDelete"
@@ -124,6 +126,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
                 android:text="@string/files_delete"
+                android:textAllCaps="false"
                 android:textColor="@color/files_err" />
         </LinearLayout>
     </LinearLayout>

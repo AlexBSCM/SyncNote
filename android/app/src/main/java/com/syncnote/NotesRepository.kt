@@ -17,18 +17,33 @@ class NotesRepository(ctx: Context) : SyncStore {
     }
 
     // Удаляем файлы без метаданных (обрывы, дубли после слияния id).
+    // Учитываем ОБЕ подсистемы: вложения (attachments) и отдельные файлы
+    // (files, ключ — stored_name/sha). Иначе старт приложения стирал бы
+    // байты синхронизированных файлов, оставляя строки-сироты без тела.
+    // Безопасность: ЛЮБАЯ ошибка чтения БД = полный отказ от чистки
+    // (частичный known приводил к удалению живых файлов при занятой БД),
+    // свежие файлы (< 60 c) не трогаем — их могла только что записать
+    // параллельная сессия/импорт после нашего снимка known.
     private fun sweepOrphanFiles() {
         try {
             val known = mutableSetOf<String>()
             db.readableDatabase.rawQuery("SELECT stored_name FROM attachments", null).use { c ->
                 while (c.moveToNext()) known += c.getString(0)
             }
+            db.readableDatabase.rawQuery("SELECT stored_name FROM files", null).use { c ->
+                while (c.moveToNext()) known += c.getString(0)
+            }
+            val now = System.currentTimeMillis()
             filesRoot.listFiles()?.forEach { f ->
-                if (f.isFile && f.name !in known && !f.name.endsWith(".tmp")) {
+                if (f.isFile && f.name !in known && !f.name.endsWith(".tmp") &&
+                    now - f.lastModified() > 60_000
+                ) {
                     try { f.delete() } catch (_: Exception) { }
                 }
             }
-        } catch (_: Exception) { }
+        } catch (_: Exception) {
+            // Неполное состояние — ничего не удаляем.
+        }
     }
 
     fun list(): List<Note> = query(null)

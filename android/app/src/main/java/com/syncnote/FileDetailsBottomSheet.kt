@@ -135,20 +135,26 @@ class FileDetailsBottomSheet : BottomSheetDialogFragment() {
         }
     }
 
-    private var pendingSave: FileEntry? = null
-
     private val saveDoc =
         registerForActivityResult(ActivityResultContracts.CreateDocument("*/*")) { uri ->
-            val e = pendingSave ?: return@registerForActivityResult
-            pendingSave = null
+            android.util.Log.i("SyncNote", "saveAs result uri=$uri")
+            // entry переживает смерть процесса (восстанавливается из arguments
+            // в onViewCreated), отдельное pending-состояние не нужно.
+            val e = entry ?: run {
+                android.util.Log.i("SyncNote", "saveAs no entry")
+                return@registerForActivityResult
+            }
             if (uri == null) return@registerForActivityResult
             try {
                 val src = File(repo.filesDir(), e.storedName)
-                requireContext().contentResolver.openOutputStream(uri)?.use { out ->
-                    src.inputStream().use { it.copyTo(out) }
-                }
+                android.util.Log.i("SyncNote",
+                    "saveAs ${e.name} srcExists=${src.exists()} srcSize=${src.length()}")
+                val out = requireContext().contentResolver.openOutputStream(uri)
+                    ?: throw java.io.IOException("openOutputStream вернул null")
+                out.use { o -> src.inputStream().use { it.copyTo(o) } }
                 toast(getString(R.string.files_saved, e.name))
             } catch (ex: Exception) {
+                android.util.Log.i("SyncNote", "saveAs failed: ${ex.message}")
                 toast("${getString(R.string.files_save_failed)} ${ex.message}")
             }
         }
