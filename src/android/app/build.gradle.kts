@@ -34,3 +34,13 @@ dependencies {
     // No Room, no ORM: raw android.database.sqlite (see docs/schema.sql).
     testImplementation("junit:junit:4.13.2")
 }
+
+// Единый источник схемы: docs/schema.sql копируется в assets ПЕРЕД сборкой.
+// Коммитить сгенерированный assets/schema_v1.sql не нужно (см. .gitignore).
+tasks.register<Copy>("syncSchemaAsset") {
+    // src/android -> ../.. = корень репозитория, где лежит docs/.
+    from(rootProject.file("../../docs/schema.sql"))
+    into("src/main/assets")
+    rename { "schema_v1.sql" }
+}
+tasks.named("preBuild") { dependsOn("syncSchemaAsset") }

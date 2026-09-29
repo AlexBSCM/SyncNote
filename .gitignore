@@ -33,3 +33,6 @@ desktop.ini
 .env
 secrets.json
 config.local.yaml
+
+# Generated schema asset (built from docs/schema.sql by syncSchemaAsset task)
+src/android/app/src/main/assets/schema_v1.sql
