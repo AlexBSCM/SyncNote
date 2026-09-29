@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>SyncNote.Windows</AssemblyName>
+    <RootNamespace>SyncNote.Windows</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Точка входа живет в Views/, а не в корне — регистрируем явно. -->
+    <Page Remove="Views\App.xaml" />
+    <ApplicationDefinition Include="Views\App.xaml" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Зависимость от ядра -->
+    <ProjectReference Include="../SyncNote.Core/SyncNote.Core.csproj" />
+
+    <!-- SQLite драйвер -->
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.8" />
+
+    <!-- QR Code Generator (1.5.2 не опубликован на NuGet — ближайший фикс 1.6.0) -->
+    <PackageReference Include="QRCoder" Version="1.6.0" />
+  </ItemGroup>
+</Project>
