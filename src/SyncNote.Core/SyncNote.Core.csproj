@@ -10,4 +10,13 @@
   <!-- No ORM, no external NuGet yet (System.Text.Json is built into net8.0).
        Microsoft.Data.Sqlite will be added with the store implementation. -->
 
+  <ItemGroup>
+    <!-- Единый источник схемы: физический файл один (docs/schema.sql),
+         в сборку встраивается ссылкой. Никаких копий SQL в коде. -->
+    <EmbeddedResource Include="..\..\docs\schema.sql">
+      <Link>Resources\schema_v1.sql</Link>
+      <LogicalName>schema_v1.sql</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
 </Project>
