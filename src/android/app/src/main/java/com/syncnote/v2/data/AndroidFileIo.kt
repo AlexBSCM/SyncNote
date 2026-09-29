@@ -1,5 +1,6 @@
 package com.syncnote.v2.data
 
+import com.syncnote.v2.domain.FileIo
 import java.io.File
 import java.io.FileInputStream
 import java.io.InputStream
@@ -9,10 +10,10 @@ class FileTooLargeException(name: String, size: Long, max: Long) :
 
 // Content-addressed хранилище: filesDir/files/{sha256_hex}.
 // Зеркало C# WindowsFileIo: дедуп, tmp+rename, валидация sha.
-class AndroidFileIo(filesDir: File) {
+class AndroidFileIo(filesDir: File) : FileIo {
     private val root = File(filesDir, "files").also { it.mkdirs() }
 
-    fun import(sourcePath: String): Pair<String, Long> {
+    override fun import(sourcePath: String): Pair<String, Long> {
         val src = File(sourcePath)
         if (src.length() > MAX_BYTES)
             throw FileTooLargeException(src.name, src.length(), MAX_BYTES)
@@ -48,24 +49,24 @@ class AndroidFileIo(filesDir: File) {
         return sha to dest.length()
     }
 
-    fun existsInStorage(sha256: String): Boolean = try {
+    override fun existsInStorage(sha256: String): Boolean = try {
         File(root, norm(sha256)).exists()
     } catch (_: Exception) {
         false
     }
 
-    fun openRead(sha256: String): InputStream =
+    override fun openRead(sha256: String): InputStream =
         FileInputStream(File(root, norm(sha256)))
 
     // Без проверки ссылок: вызывать после проверки живых записей в БД.
-    fun deleteFromStorage(sha256: String) {
+    override fun deleteFromStorage(sha256: String) {
         try {
             val f = File(root, norm(sha256))
             if (f.exists()) f.delete()
         } catch (_: Exception) { }
     }
 
-    fun getStoragePath(sha256: String): File = File(root, norm(sha256))
+    override fun getStoragePath(sha256: String): File = File(root, norm(sha256))
 
     private fun norm(sha256: String): String {
         val s = sha256.lowercase()

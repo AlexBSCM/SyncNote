@@ -33,6 +33,10 @@ android {
 dependencies {
     // No Room, no ORM: raw android.database.sqlite (see docs/schema.sql).
     testImplementation("junit:junit:4.13.2")
+    // Настоящий org.json для JVM-тестов: без него android.jar подсовывает
+    // стабы ("not mocked") и любой JSONObject падает. На девайсе
+    // используется фреймворковый org.json, в APK это не попадает.
+    testImplementation("org.json:json:20240303")
 }
 
 // Единый источник схемы: docs/schema.sql копируется в assets ПЕРЕД сборкой.

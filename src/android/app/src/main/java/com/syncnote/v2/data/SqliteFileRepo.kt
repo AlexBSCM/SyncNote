@@ -2,6 +2,7 @@ package com.syncnote.v2.data
 
 import android.content.ContentValues
 import com.syncnote.v2.domain.FileEntry
+import com.syncnote.v2.domain.FileRepo
 import java.io.File
 
 // Строки таблицы files. Байты — через AndroidFileIo (content-addressed).
@@ -9,8 +10,8 @@ import java.io.File
 class SqliteFileRepo(
     private val dbFile: File,
     private val io: AndroidFileIo
-) {
-    fun getById(id: String): FileEntry? {
+) : FileRepo {
+    override fun getById(id: String): FileEntry? {
         openDb(dbFile).use { db ->
             db.rawQuery(
                 "SELECT id, name, mime, size, sha256, stored_name, rev," +
@@ -22,7 +23,7 @@ class SqliteFileRepo(
         }
     }
 
-    fun getAll(includeDeleted: Boolean = false): List<FileEntry> {
+    override fun getAll(includeDeleted: Boolean): List<FileEntry> {
         val out = mutableListOf<FileEntry>()
         openDb(dbFile).use { db ->
             val sql = "SELECT id, name, mime, size, sha256, stored_name, rev," +
@@ -36,7 +37,7 @@ class SqliteFileRepo(
         return out
     }
 
-    fun addFile(metadata: FileEntry, sourcePath: String): String {
+    override fun addFile(metadata: FileEntry, sourcePath: String): String {
         val (sha, size) = io.import(sourcePath)
         val id = newId()
         val now = utcNow()
@@ -66,7 +67,7 @@ class SqliteFileRepo(
         }
     }
 
-    fun softDelete(id: String) {
+    override fun softDelete(id: String) {
         openDb(dbFile).use { db ->
             db.execSQL(
                 "UPDATE files SET is_deleted=1, rev=rev+1, updated_at=? " +
@@ -75,8 +76,42 @@ class SqliteFileRepo(
         }
     }
 
-    private fun hasLiveSha(sha: String): Boolean {
+    override fun insertFull(e: FileEntry) {
         openDb(dbFile).use { db ->
+            val v = android.content.ContentValues().apply {
+                put("id", e.id)
+                put("name", e.name)
+                put("mime", e.mime)
+                put("size", e.sizeBytes)
+                put("sha256", e.sha256)
+                put("stored_name", e.storedName)
+                put("rev", e.rev)
+                put("updated_at", e.updatedAt)
+                put("author_device", e.authorDeviceId)
+                put("is_deleted", if (e.isDeleted) 1 else 0)
+            }
+            db.insertOrThrow("files", null, v)
+        }
+    }
+
+    override fun updateFull(e: FileEntry) {
+        openDb(dbFile).use { db ->
+            val v = android.content.ContentValues().apply {
+                put("name", e.name)
+                put("mime", e.mime)
+                put("size", e.sizeBytes)
+                put("sha256", e.sha256)
+                put("stored_name", e.storedName)
+                put("rev", e.rev)
+                put("updated_at", e.updatedAt)
+                put("author_device", e.authorDeviceId)
+                put("is_deleted", if (e.isDeleted) 1 else 0)
+            }
+            db.update("files", v, "id=?", arrayOf(e.id))
+        }
+    }
+
+    private fun hasLiveSha(sha: String): Boolean {        openDb(dbFile).use { db ->
             db.rawQuery(
                 "SELECT 1 FROM files WHERE sha256=? AND is_deleted=0 LIMIT 1",
                 arrayOf(sha.lowercase())).use { c ->

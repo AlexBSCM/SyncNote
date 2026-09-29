@@ -2,12 +2,13 @@ package com.syncnote.v2.data
 
 import android.content.ContentValues
 import com.syncnote.v2.domain.NoteEntry
+import com.syncnote.v2.domain.NoteRepo
 import java.io.File
 
 // Сырой SQL без ORM. Зеркало C# SqliteNoteRepo: та же семантика
 // (no-op без изменений, optimistic locking по rev, tombstone).
-class SqliteNoteRepo(private val dbFile: File) {
-    fun getById(id: String): NoteEntry? {
+class SqliteNoteRepo(private val dbFile: File) : NoteRepo {
+    override fun getById(id: String): NoteEntry? {
         openDb(dbFile).use { db ->
             db.rawQuery(
                 "SELECT id, title, body, rev, updated_at, author_device," +
@@ -19,7 +20,7 @@ class SqliteNoteRepo(private val dbFile: File) {
         }
     }
 
-    fun getAll(includeDeleted: Boolean = false): List<NoteEntry> {
+    override fun getAll(includeDeleted: Boolean): List<NoteEntry> {
         val out = mutableListOf<NoteEntry>()
         openDb(dbFile).use { db ->
             val sql = "SELECT id, title, body, rev, updated_at, author_device," +
@@ -33,8 +34,9 @@ class SqliteNoteRepo(private val dbFile: File) {
         return out
     }
 
-    fun create(note: NoteEntry): String {
-        val id = newId()
+    override fun create(note: NoteEntry): String {
+        // Синк передаёт готовый id; UI — пустой (тогда генерируем).
+        val id = if (note.id.isBlank()) newId() else note.id
         val now = utcNow()
         openDb(dbFile).use { db ->
             val deviceId = ensureDeviceId(db)
@@ -52,7 +54,7 @@ class SqliteNoteRepo(private val dbFile: File) {
         return id
     }
 
-    fun update(note: NoteEntry) {
+    override fun update(note: NoteEntry) {
         openDb(dbFile).use { db ->
             val cur = getById(note.id)
                 ?: throw NoSuchElementException("Note ${note.id} not found.")
@@ -73,7 +75,7 @@ class SqliteNoteRepo(private val dbFile: File) {
         }
     }
 
-    fun softDelete(id: String) {
+    override fun softDelete(id: String) {
         openDb(dbFile).use { db ->
             val v = ContentValues().apply {
                 put("is_deleted", 1)
@@ -85,6 +87,35 @@ class SqliteNoteRepo(private val dbFile: File) {
                 "UPDATE notes SET is_deleted=1, rev=rev+1, updated_at=? " +
                     "WHERE id=? AND is_deleted=0",
                 arrayOf(v.getAsString("updated_at"), id))
+        }
+    }
+
+    override fun insertFull(e: NoteEntry) {
+        openDb(dbFile).use { db ->
+            val v = ContentValues().apply {
+                put("id", e.id)
+                put("title", e.title)
+                put("body", e.body)
+                put("rev", e.rev)
+                put("updated_at", e.updatedAt)
+                put("author_device", e.authorDeviceId)
+                put("is_deleted", if (e.isDeleted) 1 else 0)
+            }
+            db.insertOrThrow("notes", null, v)
+        }
+    }
+
+    override fun updateFull(e: NoteEntry) {
+        openDb(dbFile).use { db ->
+            val v = ContentValues().apply {
+                put("title", e.title)
+                put("body", e.body)
+                put("rev", e.rev)
+                put("updated_at", e.updatedAt)
+                put("author_device", e.authorDeviceId)
+                put("is_deleted", if (e.isDeleted) 1 else 0)
+            }
+            db.update("notes", v, "id=?", arrayOf(e.id))
         }
     }
 
