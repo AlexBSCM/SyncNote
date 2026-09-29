@@ -13,12 +13,19 @@ android {
         targetSdk 34
         versionCode 1
         versionName '0.1.0'
+        // Feature flag подсистемы «Отдельные файлы» (этап F.7).
+        // Выключает вкладку «Файлы» на этапе сборки.
+        buildConfigField "boolean", "ENABLE_SEPARATE_FILES", "true"
     }
 
     buildTypes {
         release {
             minifyEnabled false
         }
+    }
+    buildFeatures {
+        // Нужен для BuildConfig.ENABLE_SEPARATE_FILES (AGP 8 по умолчанию не генерирует).
+        buildConfig true
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17

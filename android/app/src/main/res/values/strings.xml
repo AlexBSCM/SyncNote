@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Строки экрана «Файлы» (этап F.7). Существующий код местами
+         хардкодит строки; новый код файлов кладёт всё в ресурсы. -->
+    <string name="tab_files">Файлы</string>
+
+    <string name="files_search_hint">Поиск файлов</string>
+    <string name="files_empty_title">Нет файлов</string>
+    <string name="files_empty_hint">Файлы, добавленные здесь, синхронизируются с ПК.</string>
+    <string name="files_add_first">Загрузить первый файл</string>
+
+    <string name="files_badge_modified">● изменено</string>
+    <string name="files_badge_synced">✓ синхр.</string>
+    <string name="files_badge_conflict">⚠ конфликт</string>
+
+    <string name="files_info_title">Информация о файле</string>
+    <string name="files_open">Открыть</string>
+    <string name="files_save_as">Сохранить как…</string>
+    <string name="files_delete">Удалить</string>
+    <string name="files_delete_title">Удалить файл?</string>
+    <string name="files_delete_message">Файл будет помечен как удалённый и пропадёт на другом устройстве при синхронизации.</string>
+    <string name="files_preview_unavailable">Предпросмотр недоступен</string>
+    <string name="files_too_large">Файл превышает лимит размера и не добавлен.</string>
+    <string name="files_added">Файл добавлен.</string>
+    <string name="files_deleted">Файл удалён.</string>
+    <string name="files_add_failed">Не удалось добавить файл.</string>
+</resources>
