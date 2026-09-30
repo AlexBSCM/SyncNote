@@ -8,6 +8,7 @@
 
     <application
         android:label="SyncNote v2"
+        android:theme="@style/Theme.SyncNote"
         android:supportsRtl="true">
 
         <activity

@@ -156,6 +156,9 @@ class PairingActivity : AppCompatActivity() {
             cameraProvider.unbindAll()
             cameraProvider.bindToLifecycle(
                 this as LifecycleOwner, cameraSelector, preview, imageAnalysis)
+            // Камера реально запущена — включаем анализ кадров.
+            // (Анимация и статус уже запущены из onResume.)
+            isScanning = true
         } catch (e: Exception) {
             Log.e("PairingActivity", "Camera bind failed", e)
         }
@@ -382,6 +385,18 @@ class PairingActivity : AppCompatActivity() {
             scanLine.translationY = value
         }
         animator.start()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Сканер закрывается в onPause — пересоздаём, иначе анализ
+        // молча отбрасывается до конца жизни activity.
+        if (barcodeScanner == null)
+            barcodeScanner = BarcodeScanning.getClient()
+        isScanning = true
+        scanLine.visibility = View.VISIBLE
+        statusText.text = "Наведите камеру на QR-код"
+        startScanLineAnimation()
     }
 
     override fun onPause() {

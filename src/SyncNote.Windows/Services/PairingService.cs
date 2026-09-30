@@ -15,6 +15,10 @@ namespace SyncNote.Windows.Services;
 // и статусы токен/IP-пейлоад не попадают — только факты событий.
 public sealed class PairingService : IDisposable
 {
+    // Фиксированный порт синка: телефон идёт на него напрямую
+    // (или через adb reverse tcp:48211 tcp:48211).
+    public const int DefaultPort = 48211;
+
     private readonly TcpListener _listener;
     private readonly string _dbPath;
     private readonly string _deviceId;

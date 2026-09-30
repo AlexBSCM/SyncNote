@@ -21,7 +21,7 @@
                     Padding="16" Margin="0,0,0,16" Background="White"
                     Visibility="{Binding IsGeneratingQr, Converter={StaticResource BoolToVis}}">
                 <StackPanel>
-                    <Image Source="{Binding QrBitmap}" Width="200" Height="200" Stretch="None"/>
+                    <Image Source="{Binding QrBitmap}" Width="240" Height="240" Stretch="Uniform"/>
                     <TextBlock Text="Отсканируйте QR в приложении SyncNote на телефоне" 
                                TextAlignment="Center" Margin="0,12,0,0" FontSize="13" 
                                Foreground="#666" TextWrapping="Wrap"/>

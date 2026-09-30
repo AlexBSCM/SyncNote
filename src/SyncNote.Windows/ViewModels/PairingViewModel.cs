@@ -31,7 +31,8 @@ public sealed class PairingViewModel : INotifyPropertyChanged
 
     // UI state
     public bool IsIdle => _session == null;
-    public bool IsGeneratingQr => _session != null && !IsWaitingForPeer && !IsDone && !HasError;
+    // QR виден всё время жизни сессии (включая ожидание пира).
+    public bool IsGeneratingQr => _session != null && !IsDone && !HasError;
     public bool IsWaitingForPeer => _session != null && _tokenUsed == null && !IsDone && !HasError;
     public bool IsDone => _result != null;
     public bool HasError => _error != null;
@@ -106,9 +107,9 @@ public sealed class PairingViewModel : INotifyPropertyChanged
         }
         catch { }
 
-        // Стартуем сессию
+        // Стартуем сессию на фиксированном порту синка.
         _session = PairingService.Start(
-            _dbPath, _deviceId, hostIp, 0,
+            _dbPath, _deviceId, hostIp, PairingService.DefaultPort,
             Path.Combine(Path.GetDirectoryName(_dbPath) ?? ".", "tmp"));
         HostIp = _session.Host;
         Port = _session.Port;
@@ -125,6 +126,13 @@ public sealed class PairingViewModel : INotifyPropertyChanged
         QrBitmap = img;
 
         StatusText = "Ожидание подключения...";
+        // Сессия создана после начального сброса флагов — уведомляем UI повторно,
+        // иначе кнопки/панели останутся в idle-состоянии.
+        OnProp(nameof(IsIdle));
+        OnProp(nameof(IsGeneratingQr));
+        OnProp(nameof(IsWaitingForPeer));
+        OnProp(nameof(HasError));
+        OnProp(nameof(IsDone));
         _ = Task.Run(() => WaitForPeerAsync());
     }
 
@@ -135,9 +143,11 @@ public sealed class PairingViewModel : INotifyPropertyChanged
             var res = _session!.WaitForPeerAsync(
                 s => { StatusText = s; OnProp(nameof(StatusText)); },
                 _cts.Token);
+            // Токен сгорает в finally сессии — читаем до await.
+            var tokenPresented = _session.Token;
             var resVal = await res;
             _result = resVal;
-            _tokenUsed = _session.Token;
+            _tokenUsed = tokenPresented;
             ResultSummary = $"Отправлено: {resVal.Pushed}, получено: {resVal.Pulled}, конфликтов: {resVal.Conflicts}";
             OnProp(nameof(IsDone));
             OnProp(nameof(IsWaitingForPeer));

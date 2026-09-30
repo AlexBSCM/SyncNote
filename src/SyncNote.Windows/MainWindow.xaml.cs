@@ -32,9 +32,11 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
 
+        // v2 живёт рядом с v1: отдельный каталог, иначе v1-база
+        // (schema_version=7) блокирует применение v2-схемы.
         _dbPath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "SyncNote", "notes.db");
+            "SyncNote_v2", "notes.db");
         Directory.CreateDirectory(Path.GetDirectoryName(_dbPath)!);
         new WindowsDbInitializer().Initialize(_dbPath);
         _deviceId = Environment.MachineName;

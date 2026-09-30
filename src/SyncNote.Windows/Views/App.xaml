@@ -1,6 +1,7 @@
 <Application x:Class="SyncNote.Windows.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             StartupUri="Views/MainWindow.xaml">
     <!-- Минимальный каркас: окна появятся на следующих шагах. -->
     <Application.Resources>
     </Application.Resources>
