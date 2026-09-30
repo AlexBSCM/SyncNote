@@ -4,20 +4,38 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:gravity="center"
+    android:background="@color/files_bg2"
     android:padding="24dp">
 
     <TextView
-        android:id="@+id/lastDeviceText"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="24dp"
-        android:text="Устройств пока нет"
-        android:textSize="16sp" />
+        android:layout_marginBottom="8dp"
+        android:text="SyncNote"
+        android:textAppearance="@style/TextAppearance_SyncNote_Title" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@drawable/card_section"
+        android:padding="16dp"
+        android:layout_marginBottom="16dp">
+
+        <TextView
+            android:id="@+id/lastDeviceText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Устройств пока нет"
+            android:textAppearance="@style/TextAppearance_SyncNote_Body" />
+
+    </LinearLayout>
 
     <Button
         android:id="@+id/btnPair"
+        style="@style/Widget.SyncNote.Button.Primary"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Сопряжение / Синхронизация" />
+        android:text="📱 Сопряжение / Синхронизация" />
 
 </LinearLayout>

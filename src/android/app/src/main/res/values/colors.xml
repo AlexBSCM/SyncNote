@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Палитра v2: зеркало десктопной FilesTheme (main: SyncNote.Windows/Styles/FilesTheme.xaml).
+         Hex только здесь — в разметке и коде цветов нет. -->
+    <color name="files_accent">#3F51B5</color>
+    <color name="files_accent_dark">#354499</color>
+    <color name="files_accent_soft">#1A3F51B5</color>
+    <color name="files_bg">#FFFFFF</color>
+    <color name="files_bg2">#F7F7F8</color>
+    <color name="files_line">#E2E2E6</color>
+    <color name="files_line_soft">#EDEDF0</color>
+    <color name="files_text">#1B1B1F</color>
+    <color name="files_text2">#6A6A72</color>
+    <color name="files_text3">#9A9AA2</color>
+
+    <color name="files_ok">#2E9E4F</color>
+    <color name="files_ok_bg">#262E9E4F</color>
+    <color name="files_ok_fg">#1C7A39</color>
+    <color name="files_warn">#E8A317</color>
+    <color name="files_warn_bg">#26E8A317</color>
+    <color name="files_warn_fg">#9A6B00</color>
+    <color name="files_err">#D63B3B</color>
+    <color name="files_err_bg">#1AD63B3B</color>
+
+    <!-- Служебные: оверлеи камеры (не палитра, но hex только здесь). -->
+    <color name="scanner_line">#00FF00</color>
+    <color name="scrim">#80000000</color>
+    <color name="scrim_heavy">#CC000000</color>
+</resources>
