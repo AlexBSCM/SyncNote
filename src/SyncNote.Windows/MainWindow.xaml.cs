@@ -45,7 +45,8 @@ public partial class MainWindow : Window
         _files = new SqliteFileRepo(_dbPath, Environment.MachineName, new WindowsFileIo(Path.Combine(Path.GetDirectoryName(_dbPath)!, "files")));
         _sync = new SqlSyncStateStore(_dbPath);
 
-        _vm = new MainViewModel(_notes, _files, _sync, this);
+        _vm = new MainViewModel(_notes, _files, _sync,
+            new SqliteAttachmentRepo(_dbPath, _deviceId), _fileIo, this);
         _vm.ShowPairing += () => ShowPairingWindow();
         DataContext = _vm;
 
@@ -90,6 +91,8 @@ public class MainViewModel : IDisposable, INotifyPropertyChanged
     private readonly INoteRepo _notes;
     private readonly IFileRepo _files;
     private readonly ISyncStateStore _sync;
+    private readonly SqliteAttachmentRepo _attachments;
+    private readonly IFileIo _fileIo;
     private readonly Window _owner;
     private readonly List<SelectableNote> _allNotes = new();
     private readonly List<SelectableFile> _allFiles = new();
@@ -107,6 +110,11 @@ public class MainViewModel : IDisposable, INotifyPropertyChanged
     public ICommand SaveNoteCommand { get; }
     public ICommand DeleteNoteCommand { get; }
     public ICommand DeleteFileCommand { get; }
+    public ICommand FormatBoldCommand { get; }
+    public ICommand FormatItalicCommand { get; }
+    public ICommand FormatListCommand { get; }
+    public ICommand AttachFileCommand { get; }
+    public ICommand SetPreviewCommand { get; }
     public ICommand OpenSettingsCommand { get; }
     public ICommand ShowPairingCommand { get; }
     public ICommand ExitCommand { get; }
@@ -154,13 +162,13 @@ public class MainViewModel : IDisposable, INotifyPropertyChanged
     public SelectableNote? SelectedNote
     {
         get => _selectedNote;
-        set { _selectedNote = value; OnProp(); OnProp(nameof(HasSelection)); }
+        set { _selectedNote = value; OnProp(); OnProp(nameof(HasSelection)); CommandManager.InvalidateRequerySuggested(); }
     }
 
     public SelectableFile? SelectedFile
     {
         get => _selectedFile;
-        set { _selectedFile = value; OnProp(); OnProp(nameof(HasFileSelection)); }
+        set { _selectedFile = value; OnProp(); OnProp(nameof(HasFileSelection)); CommandManager.InvalidateRequerySuggested(); }
     }
 
     public bool HasSelection => _selectedNote != null;
@@ -180,17 +188,25 @@ public class MainViewModel : IDisposable, INotifyPropertyChanged
         }
     }
 
-    public MainViewModel(INoteRepo notes, IFileRepo files, ISyncStateStore sync, Window owner)
+    public MainViewModel(INoteRepo notes, IFileRepo files, ISyncStateStore sync,
+        SqliteAttachmentRepo attachments, IFileIo fileIo, Window owner)
     {
         _notes = notes;
         _files = files;
         _sync = sync;
+        _attachments = attachments;
+        _fileIo = fileIo;
         _owner = owner;
 
         AddNoteCommand = new RelayCommand(_ => AddNote());
         SaveNoteCommand = new RelayCommand(_ => SaveSelected(), _ => HasSelection);
         DeleteNoteCommand = new RelayCommand(_ => DeleteSelected(), _ => HasSelection);
         DeleteFileCommand = new RelayCommand(_ => DeleteSelectedFile(), _ => HasFileSelection);
+        FormatBoldCommand = new RelayCommand(p => WrapSelection(p, "**"), _ => HasSelection);
+        FormatItalicCommand = new RelayCommand(p => WrapSelection(p, "*"), _ => HasSelection);
+        FormatListCommand = new RelayCommand(_ => AppendChecklistItem(), _ => HasSelection);
+        AttachFileCommand = new RelayCommand(_ => AttachFile(), _ => HasSelection);
+        SetPreviewCommand = new RelayCommand(p => SetPreview(p), _ => HasSelection);
         OpenSettingsCommand = new RelayCommand(_ => { /* TODO: Settings window */ });
         ShowPairingCommand = new RelayCommand(_ => ShowPairing?.Invoke());
         ExitCommand = new RelayCommand(_ => Application.Current.Shutdown());
@@ -245,6 +261,132 @@ public class MainViewModel : IDisposable, INotifyPropertyChanged
         RefreshAll();
     }
 
+    // --- Markdown-редактор ---
+
+    private static System.Windows.Controls.TextBox? BoxOf(object? p)
+        => p as System.Windows.Controls.TextBox;
+
+    private void WrapSelection(object? p, string marker)
+    {
+        var box = BoxOf(p);
+        if (_selectedNote == null) return;
+        if (box == null || string.IsNullOrEmpty(box.SelectedText))
+        {
+            _selectedNote.Note.Body += marker + marker;
+        }
+        else
+        {
+            int start = box.SelectionStart;
+            string sel = box.SelectedText;
+            _selectedNote.Note.Body = _selectedNote.Note.Body.Remove(start, sel.Length)
+                .Insert(start, marker + sel + marker);
+        }
+        OnProp(nameof(SelectedNote));
+    }
+
+    private void AppendChecklistItem()
+    {
+        if (_selectedNote == null) return;
+        if (_selectedNote.Note.Body.Length > 0
+            && !_selectedNote.Note.Body.EndsWith("\n"))
+            _selectedNote.Note.Body += "\n";
+        _selectedNote.Note.Body += "- [ ] ";
+        OnProp(nameof(SelectedNote));
+    }
+
+    private void SetPreview(object? p)
+    {
+        if (_selectedNote == null) return;
+        bool want = p is string s ? s == "1" : p is true;
+        if (_selectedNote.IsPreview == want) return;
+        _selectedNote.IsPreview = want;
+        if (want)
+        {
+            _selectedNote.PreviewDocument = MarkdownPreview.ToFlowDocument(
+                _selectedNote.Note.Body, OpenAttachmentLink);
+        }
+    }
+
+    private void OpenAttachmentLink(string url)
+    {
+        try
+        {
+            if (!url.StartsWith("file://", StringComparison.OrdinalIgnoreCase))
+                return;
+            string sha = url.Substring("file://".Length);
+            string path = _fileIo.GetStoragePath(sha);
+            if (!File.Exists(path)) return;
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(path)
+            {
+                UseShellExecute = true
+            });
+        }
+        catch { }
+    }
+
+    private async void AttachFile()
+    {
+        if (_selectedNote == null) return;
+        try
+        {
+            var log = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "syncnote-attach.log");
+            System.IO.File.AppendAllText(log, $"[{DateTime.Now}] AttachFile called\n");
+            
+            var dlg = new Microsoft.Win32.OpenFileDialog
+            {
+                Title = "Прикрепить файл к заметке"
+            };
+            System.IO.File.AppendAllText(log, $"[{DateTime.Now}] ShowDialog called\n");
+            if (dlg.ShowDialog() != true) 
+            {
+                System.IO.File.AppendAllText(log, $"[{DateTime.Now}] ShowDialog returned false\n");
+                return; 
+            }
+            System.IO.File.AppendAllText(log, $"[{DateTime.Now}] File selected: {dlg.FileName}\n");
+            
+            string name = Path.GetFileName(dlg.FileName);
+            var (sha, size) = await _fileIo.ImportAsync(dlg.FileName);
+            System.IO.File.AppendAllText(log, $"[{DateTime.Now}] Imported: sha={sha} size={size}\n");
+            
+            await _attachments.InsertAsync(
+                _selectedNote.Note.Id, name, MimeOf(name), size, sha);
+            System.IO.File.AppendAllText(log, $"[{DateTime.Now}] Inserted to DB\n");
+            
+            if (_selectedNote.Note.Body.Length > 0
+                && !_selectedNote.Note.Body.EndsWith("\n"))
+                _selectedNote.Note.Body += "\n";
+            _selectedNote.Note.Body += $"[📎 {name}](file://{sha})";
+            await _notes.UpdateAsync(_selectedNote.Note);
+            System.IO.File.AppendAllText(log, $"[{DateTime.Now}] Note updated\n");
+            
+            RefreshAll();
+            System.IO.File.AppendAllText(log, $"[{DateTime.Now}] Refreshed\n");
+        }
+        catch (Exception ex)
+        {
+            System.IO.File.AppendAllText(
+                System.IO.Path.Combine(System.IO.Path.GetTempPath(), "syncnote-attach.log"),
+                $"[{DateTime.Now}] ERROR: {ex}\n");
+            throw;
+        }
+    }
+
+    private static string MimeOf(string name)
+    {
+        string ext = Path.GetExtension(name).ToLowerInvariant();
+        return ext switch
+        {
+            ".png" or ".jpg" or ".jpeg" or ".gif" or ".webp" or ".bmp" => "image/" + ext.TrimStart('.'),
+            ".pdf" => "application/pdf",
+            ".txt" or ".md" or ".log" => "text/plain",
+            ".mp3" or ".wav" or ".ogg" => "audio/" + ext.TrimStart('.'),
+            ".mp4" or ".webm" or ".mkv" or ".avi" => "video/" + ext.TrimStart('.'),
+            ".zip" => "application/zip",
+            ".json" => "application/json",
+            _ => "application/octet-stream",
+        };
+    }
+
     public void RefreshAll()
     {
         var noteId = _selectedNote?.Note.Id;
@@ -291,6 +433,24 @@ public sealed class SelectableNote : INotifyPropertyChanged
     {
         get => _selected;
         set { _selected = value; PropertyChanged?.Invoke(this, new(nameof(IsSelected))); }
+    }
+    private bool _isPreview;
+    public bool IsPreview
+    {
+        get => _isPreview;
+        set
+        {
+            _isPreview = value;
+            PropertyChanged?.Invoke(this, new(nameof(IsPreview)));
+            PropertyChanged?.Invoke(this, new(nameof(IsEditing)));
+        }
+    }
+    public bool IsEditing => !IsPreview;
+    private System.Windows.Documents.FlowDocument? _preview;
+    public System.Windows.Documents.FlowDocument? PreviewDocument
+    {
+        get => _preview;
+        set { _preview = value; PropertyChanged?.Invoke(this, new(nameof(PreviewDocument))); }
     }
     public event PropertyChangedEventHandler? PropertyChanged;
 

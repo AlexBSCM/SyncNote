@@ -1,19 +1,16 @@
 package com.syncnote.v2.ui
 
-import android.app.Activity
-import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.widget.Button
-import android.widget.TextView
+import androidx.appcompat.app.AppCompatActivity
+import androidx.fragment.app.Fragment
 import com.syncnote.v2.R
 import com.syncnote.v2.data.AndroidDbInitializer
-import com.syncnote.v2.data.TrustedDeviceStore
-import com.syncnote.v2.data.openDb
 
-// Точка входа v2: инициализация БД, переход в сопряжение,
-// показ последнего устройства для повторного синка.
-class MainActivity : Activity() {
+// Главный экран v2: вкладки «Заметки / Файлы / Настройки».
+// Сопряжение живёт в PairingActivity (кнопки — в настройках и списке).
+class MainActivity : AppCompatActivity() {
     override fun onCreate(state: Bundle?) {
         super.onCreate(state)
         try {
@@ -26,28 +23,21 @@ class MainActivity : Activity() {
         }
         setContentView(R.layout.activity_main)
 
-        findViewById<Button>(R.id.btnPair).setOnClickListener {
-            startActivity(Intent(this, PairingActivity::class.java))
+        findViewById<Button>(R.id.tabNotes).setOnClickListener {
+            show(NotesFragment())
         }
+        findViewById<Button>(R.id.tabFiles).setOnClickListener {
+            show(FilesFragment())
+        }
+        findViewById<Button>(R.id.tabSettings).setOnClickListener {
+            show(SettingsFragment())
+        }
+        if (state == null) show(NotesFragment())
     }
 
-    override fun onResume() {
-        super.onResume()
-        val label = try {
-            val dbFile = getDatabasePath(AndroidDbInitializer.DB_NAME)
-            val db = openDb(dbFile)
-            try {
-                TrustedDeviceStore.get(db)?.let {
-                    "Последнее устройство: ${it.ip}:${it.port}" +
-                        (if (it.lastSeen.isNotEmpty()) "\n${it.lastSeen}" else "")
-                } ?: "Устройств пока нет — отсканируйте QR на ПК"
-            } finally {
-                db.close()
-            }
-        } catch (e: Exception) {
-            Log.e("SyncNoteV2", "Trusted device read failed", e)
-            "Устройств пока нет — отсканируйте QR на ПК"
-        }
-        findViewById<TextView>(R.id.lastDeviceText).text = label
+    private fun show(f: Fragment) {
+        supportFragmentManager.beginTransaction()
+            .replace(R.id.fragmentContainer, f)
+            .commit()
     }
 }

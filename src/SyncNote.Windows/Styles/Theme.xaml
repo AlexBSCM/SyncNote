@@ -3,6 +3,7 @@
                     xmlns:views="clr-namespace:SyncNote.Windows.Views">
 
     <views:InverseBoolToVisibilityConverter x:Key="InverseBoolToVis" />
+    <BooleanToVisibilityConverter x:Key="BooleanToVisibility" />
 
     <!-- Палитра SyncNote v2: зеркало Android colors.xml.
          Весь hex — только здесь, в разметке hex-кодов нет. -->
