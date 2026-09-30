@@ -3,6 +3,8 @@
 
     <!-- Сокеты (включая loopback через adb reverse) без него запрещены. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Камера для сканирования QR-кодов. -->
+    <uses-permission android:name="android.permission.CAMERA" />
 
     <application
         android:label="SyncNote v2"
@@ -16,6 +18,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".ui.PairingActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
+
     </application>
 
 </manifest>
