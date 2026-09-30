@@ -238,7 +238,16 @@ class PairingActivity : AppCompatActivity() {
                     if (result.isSuccess) {
                         val r = result.getOrNull()
                         saveTrustedDevice(parsed)
-                        showResultDialog("Успех", "Синхронизация завершена:\nОтправлено: ${r?.pushed ?: 0}\nПолучено: ${r?.pulled ?: 0}\nКонфликтов: ${r?.conflicts ?: 0}")
+                        Log.i("PairingActivity",
+                            "sync ok pushed=${r?.pushed ?: 0} " +
+                                "pulled=${r?.pulled ?: 0} " +
+                                "conflicts=${r?.conflicts ?: 0}")
+                        // Возврат обязателен без участия пользователя:
+                        // модальный диалог здесь — это «зависание» на экране,
+                        // а из фона show() вообще роняет приложение.
+                        android.widget.Toast.makeText(
+                            this, "Синхронизировано", android.widget.Toast.LENGTH_SHORT).show()
+                        finish()
                     } else {
                         showErrorDialog("Ошибка", result.exceptionOrNull()?.message ?: "Неизвестная ошибка")
                     }
@@ -271,15 +280,6 @@ class PairingActivity : AppCompatActivity() {
         } catch (e: Exception) {
             Log.e("PairingActivity", "Trusted device save failed", e)
         }
-    }
-
-    private fun showResultDialog(title: String, message: String) {
-        AlertDialog.Builder(this)
-            .setTitle(title)
-            .setMessage(message)
-            .setPositiveButton("OK") { _, _ -> finish() }
-            .setCancelable(false)
-            .show()
     }
 
     private fun showErrorDialog(title: String, message: String) {
