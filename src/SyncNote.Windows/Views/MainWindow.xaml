@@ -3,73 +3,207 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:SyncNote.Windows.Views"
         Title="SyncNote" Height="600" Width="900" MinHeight="480" MinWidth="720"
-        WindowStartupLocation="CenterScreen">
-    <DockPanel>
-        <Menu DockPanel.Dock="Top">
-            <MenuItem Header="_Файл">
-                <MenuItem Header="Сопряжение с телефоном..." Command="{Binding ShowPairingCommand}"/>
-                <Separator/>
-                <MenuItem Header="_Выход" Command="{Binding ExitCommand}"/>
-            </MenuItem>
-            <MenuItem Header="_Справка">
-                <MenuItem Header="О программе"/>
-            </MenuItem>
-        </Menu>
+        WindowStartupLocation="CenterScreen"
+        Background="{StaticResource BgPrimaryBrush}">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
 
-        <DockPanel>
-            <StatusBar DockPanel.Dock="Bottom">
-                <StatusBarItem>
-                    <TextBlock x:Name="StatusText" Text="Готово"/>
-                </StatusBarItem>
-            </StatusBar>
+        <!-- ROW 0: TOOLBAR -->
+        <Border Grid.Row="0" Background="{StaticResource BgPrimaryBrush}"
+                BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,0,0,1">
+            <DockPanel LastChildFill="False" Margin="12,8">
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
+                    <Button Content="＋ Новая заметка" Style="{StaticResource PrimaryButton}"
+                            Command="{Binding AddNoteCommand}"/>
+                    <Button Content="⚙ Настройки" Style="{StaticResource DefaultButton}"
+                            Margin="8,0,0,0" Command="{Binding OpenSettingsCommand}"/>
+                    <Button Content="📱 Сопряжение..." Style="{StaticResource DefaultButton}"
+                            Margin="8,0,0,0" Command="{Binding ShowPairingCommand}"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+                    <RadioButton GroupName="Tabs" Content="Заметки"
+                                 IsChecked="{Binding ShowNotes, Mode=TwoWay}"
+                                 Style="{StaticResource TabStyle}"/>
+                    <RadioButton GroupName="Tabs" Content="Файлы" Margin="4,0,0,0"
+                                 IsChecked="{Binding ShowFiles, Mode=TwoWay}"
+                                 Style="{StaticResource TabStyle}"/>
+                </StackPanel>
+            </DockPanel>
+        </Border>
 
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="300"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
+        <!-- ROW 1: CONTENT -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="350"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
 
-                <!-- Sidebar: Notes list -->
-                <Border Grid.Column="0" BorderBrush="#E0E0E0" BorderThickness="0,0,1,0">
-                    <Grid Margin="12">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="*"/>
-                            <RowDefinition Height="Auto"/>
-                        </Grid.RowDefinitions>
+            <!-- LEFT: LIST -->
+            <Border Grid.Column="0" Background="{StaticResource BgSecondaryBrush}"
+                    BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,0,1,0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <TextBox Grid.Row="0" Margin="12,12,12,8"
+                             Style="{StaticResource SearchBoxStyle}"
+                             Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}"/>
 
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                            <Button Content="＋ Новая заметка" Command="{Binding AddNoteCommand}"/>
-                            <Button Content="⚙ Настройки" Margin="8,0,0,0" Command="{Binding OpenSettingsCommand}"/>
-                            <Button Content="📱 Сопряжение..." Margin="8,0,0,0" Command="{Binding ShowPairingCommand}"/>
-                        </StackPanel>
-
-                        <TextBox Grid.Row="1" x:Name="SearchBox" Margin="0,0,0,8" 
-                                 Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}"
-                                 TextChanged="SearchBox_TextChanged"/>
-
-                        <ListBox x:Name="NotesList" Grid.Row="2" 
-                                 ItemsSource="{Binding Notes}"
+                    <Grid Grid.Row="1">
+                        <ListBox ItemsSource="{Binding Notes}"
                                  SelectedItem="{Binding SelectedNote, Mode=TwoWay}"
-                                 SelectionChanged="NotesList_SelectionChanged">
+                                 Visibility="{Binding NotesVisible}"
+                                 Background="Transparent" BorderThickness="0" Padding="8,0,8,8"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
-                                    <StackPanel Orientation="Horizontal" Margin="0,2">
-                                        <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}" VerticalAlignment="Center"/>
+                                    <DockPanel LastChildFill="True">
+                                        <TextBlock Text="📝" FontSize="16" VerticalAlignment="Center"
+                                                   DockPanel.Dock="Left"/>
+                                        <TextBlock Text="{Binding Badge}" FontSize="13" FontWeight="Bold"
+                                                   VerticalAlignment="Center" Margin="8,0,0,0"
+                                                   DockPanel.Dock="Right">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsSynced}" Value="True">
+                                                            <Setter Property="Foreground" Value="{StaticResource OkFgBrush}" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
                                         <StackPanel Margin="8,0,0,0">
-                                            <TextBlock Text="{Binding Note.Title}" FontWeight="Bold" TextTrimming="CharacterEllipsis"/>
-                                            <TextBlock Text="{Binding Note.UpdatedAt, StringFormat='{}{0:dd.MM.yyyy HH:mm}'}" FontSize="11" Foreground="#888"/>
+                                            <TextBlock Text="{Binding Note.Title}" FontWeight="Bold"
+                                                       Foreground="{StaticResource TextPrimaryBrush}"
+                                                       TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Text="{Binding Note.UpdatedAt}" FontSize="11"
+                                                       Foreground="{StaticResource TextSecondaryBrush}"/>
                                         </StackPanel>
-                                    </StackPanel>
+                                    </DockPanel>
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
                         </ListBox>
-                    </Grid>
-                </Border>
 
-                <!-- Editor / Settings / Pairing panel -->
-                <ContentControl Grid.Column="1" Content="{Binding CurrentView}"/>
-            </Grid>
-        </DockPanel>
-    </DockPanel>
+                        <ListBox ItemsSource="{Binding Files}"
+                                 SelectedItem="{Binding SelectedFile, Mode=TwoWay}"
+                                 Visibility="{Binding FilesVisible}"
+                                 Background="Transparent" BorderThickness="0" Padding="8,0,8,8"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <DockPanel LastChildFill="True">
+                                        <TextBlock Text="📄" FontSize="16" VerticalAlignment="Center"
+                                                   DockPanel.Dock="Left"/>
+                                        <TextBlock Text="{Binding Badge}" FontSize="13" FontWeight="Bold"
+                                                   VerticalAlignment="Center" Margin="8,0,0,0"
+                                                   DockPanel.Dock="Right">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsSynced}" Value="True">
+                                                            <Setter Property="Foreground" Value="{StaticResource OkFgBrush}" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                        <StackPanel Margin="8,0,0,0">
+                                            <TextBlock Text="{Binding File.Name}" FontWeight="Bold"
+                                                       Foreground="{StaticResource TextPrimaryBrush}"
+                                                       TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock FontSize="11"
+                                                       Foreground="{StaticResource TextSecondaryBrush}">
+                                                <Run Text="{Binding SizeText, Mode=OneWay}" />
+                                                <Run Text=" · " />
+                                                <Run Text="{Binding File.Mime, Mode=OneWay}" />
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </DockPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+
+                        <TextBlock Text="Нет данных" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   Foreground="{StaticResource TextHintBrush}" FontSize="14"
+                                   Visibility="{Binding HasItems, Converter={StaticResource InverseBoolToVis}}"/>
+                    </Grid>
+                </Grid>
+            </Border>
+
+            <!-- RIGHT: DETAILS -->
+            <ContentControl Grid.Column="1" Content="{Binding SelectedNote}"
+                            Visibility="{Binding NotesVisible}">
+                <ContentControl.ContentTemplate>
+                    <DataTemplate>
+                        <Grid Margin="16">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <TextBox Grid.Row="0" Margin="0,0,0,12"
+                                     Style="{StaticResource EditorTitle}"
+                                     Text="{Binding Note.Title, UpdateSourceTrigger=PropertyChanged}"/>
+                            <TextBox Grid.Row="1" AcceptsReturn="True" TextWrapping="Wrap"
+                                     VerticalScrollBarVisibility="Auto"
+                                     Style="{StaticResource EditorBody}"
+                                     Text="{Binding Note.Body, UpdateSourceTrigger=PropertyChanged}"/>
+                            <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,12,0,0">
+                                <Button Content="Сохранить" Style="{StaticResource PrimaryButton}"
+                                        Command="{Binding DataContext.SaveNoteCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                <Button Content="Удалить" Style="{StaticResource DefaultButton}"
+                                        Margin="8,0,0,0" Foreground="{StaticResource ErrFgBrush}"
+                                        Command="{Binding DataContext.DeleteNoteCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                            </StackPanel>
+                        </Grid>
+                    </DataTemplate>
+                </ContentControl.ContentTemplate>
+            </ContentControl>
+
+            <ContentControl Grid.Column="1" Content="{Binding SelectedFile}"
+                            Visibility="{Binding FilesVisible}">
+                <ContentControl.ContentTemplate>
+                    <DataTemplate>
+                        <ScrollViewer Margin="16">
+                            <StackPanel>
+                                <Border Style="{StaticResource CardSection}">
+                                    <StackPanel>
+                                        <TextBlock Text="📄 Информация о файле"
+                                                   Style="{StaticResource SectionTitle}"/>
+                                        <TextBlock Text="{Binding File.Name}" FontSize="16" FontWeight="Bold"
+                                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                                   TextWrapping="Wrap"/>
+                                        <TextBlock Margin="0,8,0,0" FontSize="13"
+                                                   Foreground="{StaticResource TextSecondaryBrush}">
+                                            <Run Text="{Binding SizeText}" />
+                                            <Run Text=" · " />
+                                            <Run Text="{Binding File.Mime}" />
+                                        </TextBlock>
+                                        <TextBlock Text="{Binding File.Sha256}" FontSize="11"
+                                                   Foreground="{StaticResource TextHintBrush}"
+                                                   TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                        <TextBlock Text="{Binding File.UpdatedAt}" FontSize="11"
+                                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                                   Margin="0,4,0,0"/>
+                                    </StackPanel>
+                                </Border>
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Content="Удалить" Style="{StaticResource DefaultButton}"
+                                            Foreground="{StaticResource ErrFgBrush}"
+                                            Command="{Binding DataContext.DeleteFileCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </DataTemplate>
+                </ContentControl.ContentTemplate>
+            </ContentControl>
+        </Grid>
+    </Grid>
 </Window>

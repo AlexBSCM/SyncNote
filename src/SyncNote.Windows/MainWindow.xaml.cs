@@ -4,7 +4,6 @@ using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Input;
 using Microsoft.Win32;
 using SyncNote.Core;
@@ -64,8 +63,8 @@ public partial class MainWindow : Window
         var pw = new PairingWindow(_dbPath, Environment.MachineName);
         pw.Owner = this;
         pw.ShowDialog();
-        // После закрытия окна сопряжения обновляем список заметок (могли прилететь новые)
-        _vm.RefreshNotes();
+        // После закрытия окна сопряжения обновляем списки (могли прилететь новые)
+        _vm.RefreshAll();
     }
 
     private async Task AutoSyncLoop()
@@ -84,28 +83,6 @@ public partial class MainWindow : Window
             }
         }
     }
-
-    private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
-    {
-        _vm.SearchQuery = SearchBox.Text;
-    }
-
-    private void NotesList_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        _vm.SelectedNote = (sender as ListBox)?.SelectedItem as SelectableNote;
-    }
-
-    private void AddNote_Click(object sender, RoutedEventArgs e)
-    {
-        var newId = _vm.AddNote();
-        NotesList.SelectedItem = _vm.Notes.FirstOrDefault(n => n.Note.Id == newId);
-    }
-
-    private void DeleteNote_Click(object sender, RoutedEventArgs e)
-    {
-        if (_vm.SelectedNote != null)
-            _vm.DeleteNote(_vm.SelectedNote.Note.Id);
-    }
 }
 
 public class MainViewModel : IDisposable, INotifyPropertyChanged
@@ -115,8 +92,11 @@ public class MainViewModel : IDisposable, INotifyPropertyChanged
     private readonly ISyncStateStore _sync;
     private readonly Window _owner;
     private readonly List<SelectableNote> _allNotes = new();
+    private readonly List<SelectableFile> _allFiles = new();
     private string _searchQuery = "";
     private SelectableNote? _selectedNote;
+    private SelectableFile? _selectedFile;
+    private bool _showNotes = true;
 
     public event PropertyChangedEventHandler? PropertyChanged;
     private void OnProp([CallerMemberName] string? n = null) => PropertyChanged?.Invoke(this, new(n));
@@ -124,19 +104,67 @@ public class MainViewModel : IDisposable, INotifyPropertyChanged
     public event Action? ShowPairing;
 
     public ICommand AddNoteCommand { get; }
+    public ICommand SaveNoteCommand { get; }
     public ICommand DeleteNoteCommand { get; }
+    public ICommand DeleteFileCommand { get; }
     public ICommand OpenSettingsCommand { get; }
     public ICommand ShowPairingCommand { get; }
     public ICommand ExitCommand { get; }
 
     public IReadOnlyList<SelectableNote> Notes => _allNotes;
+    public IReadOnlyList<SelectableFile> Files => _allFiles;
+
+    public bool ShowNotes
+    {
+        get => _showNotes;
+        set
+        {
+            if (_showNotes == value) return;
+            _showNotes = value;
+            OnProp();
+            OnProp(nameof(ShowFiles));
+            OnProp(nameof(NotesVisible));
+            OnProp(nameof(FilesVisible));
+            OnProp(nameof(HasItems));
+        }
+    }
+
+    public bool ShowFiles
+    {
+        get => !_showNotes;
+        set
+        {
+            if (!_showNotes == value) return;
+            _showNotes = !value;
+            OnProp();
+            OnProp(nameof(ShowNotes));
+            OnProp(nameof(NotesVisible));
+            OnProp(nameof(FilesVisible));
+            OnProp(nameof(HasItems));
+        }
+    }
+
+    public Visibility NotesVisible => _showNotes ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility FilesVisible => _showNotes ? Visibility.Collapsed : Visibility.Visible;
+
+    public bool HasItems => _showNotes
+        ? _allNotes.Any(n => n.IsVisible)
+        : _allFiles.Any(f => f.IsVisible);
+
     public SelectableNote? SelectedNote
     {
         get => _selectedNote;
         set { _selectedNote = value; OnProp(); OnProp(nameof(HasSelection)); }
     }
 
+    public SelectableFile? SelectedFile
+    {
+        get => _selectedFile;
+        set { _selectedFile = value; OnProp(); OnProp(nameof(HasFileSelection)); }
+    }
+
     public bool HasSelection => _selectedNote != null;
+    public bool HasFileSelection => _selectedFile != null;
 
     public string SearchQuery
     {
@@ -146,6 +174,9 @@ public class MainViewModel : IDisposable, INotifyPropertyChanged
             var q = value.Trim().ToLowerInvariant();
             foreach (var n in _allNotes)
                 n.IsVisible = string.IsNullOrEmpty(q) || n.Note.Title.ToLower().Contains(q);
+            foreach (var f in _allFiles)
+                f.IsVisible = string.IsNullOrEmpty(q) || f.File.Name.ToLower().Contains(q);
+            OnProp(nameof(HasItems));
         }
     }
 
@@ -157,12 +188,14 @@ public class MainViewModel : IDisposable, INotifyPropertyChanged
         _owner = owner;
 
         AddNoteCommand = new RelayCommand(_ => AddNote());
+        SaveNoteCommand = new RelayCommand(_ => SaveSelected(), _ => HasSelection);
         DeleteNoteCommand = new RelayCommand(_ => DeleteSelected(), _ => HasSelection);
+        DeleteFileCommand = new RelayCommand(_ => DeleteSelectedFile(), _ => HasFileSelection);
         OpenSettingsCommand = new RelayCommand(_ => { /* TODO: Settings window */ });
         ShowPairingCommand = new RelayCommand(_ => ShowPairing?.Invoke());
         ExitCommand = new RelayCommand(_ => Application.Current.Shutdown());
 
-        RefreshNotes();
+        RefreshAll();
     }
 
     public string AddNote()
@@ -179,14 +212,23 @@ public class MainViewModel : IDisposable, INotifyPropertyChanged
             IsDeleted = false
         };
         _notes.CreateAsync(note).Wait();
-        RefreshNotes();
+        RefreshAll();
+        SelectedNote = _allNotes.FirstOrDefault(n => n.Note.Id == id);
         return id;
+    }
+
+    public void SaveSelected()
+    {
+        if (_selectedNote == null) return;
+        _notes.UpdateAsync(_selectedNote.Note).Wait();
+        RefreshAll();
     }
 
     public void DeleteNote(string id)
     {
         _notes.SoftDeleteAsync(id).Wait();
-        RefreshNotes();
+        if (_selectedNote?.Note.Id == id) SelectedNote = null;
+        RefreshAll();
     }
 
     public void DeleteSelected()
@@ -195,18 +237,45 @@ public class MainViewModel : IDisposable, INotifyPropertyChanged
             DeleteNote(_selectedNote.Note.Id);
     }
 
-    public void RefreshNotes()
+    public void DeleteSelectedFile()
     {
-        var selectedId = _selectedNote?.Note.Id;
+        if (_selectedFile == null) return;
+        _files.SoftDeleteAsync(_selectedFile.File.Id).Wait();
+        SelectedFile = null;
+        RefreshAll();
+    }
+
+    public void RefreshAll()
+    {
+        var noteId = _selectedNote?.Note.Id;
+        var fileId = _selectedFile?.File.Id;
         _allNotes.Clear();
         foreach (var n in _notes.GetAllAsync(false).Result)
         {
-            var sn = new SelectableNote(n);
-            if (sn.Note.Id == selectedId) sn.IsSelected = true;
+            var sn = new SelectableNote(n)
+            {
+                IsSynced = n.Rev <= _sync.GetSyncRev("note", n.Id)
+            };
             _allNotes.Add(sn);
         }
+        _allFiles.Clear();
+        foreach (var f in _files.GetAllAsync(false).Result)
+        {
+            var sf = new SelectableFile(f)
+            {
+                IsSynced = f.Rev <= _sync.GetSyncRev("file", f.Id)
+            };
+            _allFiles.Add(sf);
+        }
+        SelectedNote = _allNotes.FirstOrDefault(n => n.Note.Id == noteId);
+        SelectedFile = _allFiles.FirstOrDefault(f => f.File.Id == fileId);
         OnProp(nameof(Notes));
+        OnProp(nameof(Files));
+        OnProp(nameof(HasItems));
     }
+
+    // Совместимость со старым вызовом после сопряжения.
+    public void RefreshNotes() => RefreshAll();
 
     public void Dispose() { }
 }
@@ -215,6 +284,8 @@ public sealed class SelectableNote : INotifyPropertyChanged
 {
     public NoteEntry Note { get; }
     public bool IsVisible { get; set; } = true;
+    public bool IsSynced { get; set; } = true;
+    public string Badge => IsSynced ? "✓" : "●";
     private bool _selected;
     public bool IsSelected
     {
@@ -226,10 +297,38 @@ public sealed class SelectableNote : INotifyPropertyChanged
     public SelectableNote(NoteEntry n) => Note = n;
 }
 
+public sealed class SelectableFile : INotifyPropertyChanged
+{
+    public FileEntry File { get; }
+    public bool IsVisible { get; set; } = true;
+    public bool IsSynced { get; set; } = true;
+    public string Badge => IsSynced ? "✓" : "●";
+    public string SizeText
+    {
+        get
+        {
+            long b = File.SizeBytes;
+            if (b < 1024) return $"{b} Б";
+            double kb = b / 1024.0;
+            if (kb < 1024) return $"{kb:F1} КБ";
+            double mb = kb / 1024.0;
+            if (mb < 1024) return $"{mb:F1} МБ";
+            return $"{mb / 1024.0:F2} ГБ";
+        }
+    }
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    public SelectableFile(FileEntry f) => File = f;
+}
+
 public sealed class RelayCommand(Action<object?> execute, Func<object?, bool>? canExecute = null) : ICommand
 {
-    public event EventHandler? CanExecuteChanged;
+    public event EventHandler? CanExecuteChanged
+    {
+        add { CommandManager.RequerySuggested += value; }
+        remove { CommandManager.RequerySuggested -= value; }
+    }
     public bool CanExecute(object? p) => canExecute?.Invoke(p) ?? true;
     public void Execute(object? p) => execute(p);
-    public void RaiseCanExecuteChanged() => CanExecuteChanged?.Invoke(this, EventArgs.Empty);
+    public void RaiseCanExecuteChanged() => CommandManager.InvalidateRequerySuggested();
 }
