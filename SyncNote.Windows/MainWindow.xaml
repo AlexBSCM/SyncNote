@@ -179,22 +179,6 @@
                     </Border>
 
                     <DockPanel Grid.Column="1" Background="{StaticResource FilesPanelBrush}">
-                    <Grid x:Name="EmptyHint" VerticalAlignment="Stretch" HorizontalAlignment="Stretch">
-                        <StackPanel Orientation="Vertical" HorizontalAlignment="Center" MaxWidth="300" VerticalAlignment="Center">
-                            <TextBlock Text="📝" FontSize="48" Opacity="0.2" Margin="0,0,0,12"
-                                       HorizontalAlignment="Center"/>
-                            <TextBlock Text="Нет выбранной записи"
-                                       Style="{StaticResource SectionTitle}"
-                                       Foreground="{StaticResource FilesTxt2Brush}"
-                                       TextAlignment="Center"
-                                       Margin="0,0,0,4"/>
-                            <TextBlock Text="Выберите элемент в списке слева или нажмите «Добавить», чтобы создать новый."
-                                       FontSize="12"
-                                       Foreground="{StaticResource FilesTxt3Brush}"
-                                       TextWrapping="Wrap"
-                                       TextAlignment="Center"/>
-                        </StackPanel>
-                    </Grid>
                         <Border DockPanel.Dock="Bottom" Background="{StaticResource FilesPanel2Brush}"
                                 BorderBrush="{StaticResource FilesLineSoftBrush}"
                                 BorderThickness="0,1,0,0" Padding="16,12"
@@ -211,6 +195,7 @@
                                         Click="SaveButton_Click" />
                             </DockPanel>
                         </Border>
+                        <Grid>
                         <ScrollViewer VerticalScrollBarVisibility="Auto">
                             <StackPanel x:Name="EditorPanel" Visibility="Collapsed" Margin="24,16,24,16">
                                 <TextBlock Text="Заголовок" FontSize="12"
@@ -329,6 +314,23 @@
                                         HorizontalAlignment="Left" Click="AddAttachment_Click" />
                             </StackPanel>
                         </ScrollViewer>
+                        <Grid x:Name="EmptyHint" HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <StackPanel Orientation="Vertical" HorizontalAlignment="Center" MaxWidth="300">
+                                <TextBlock Text="📝" FontSize="48" Opacity="0.2" Margin="0,0,0,12"
+                                           HorizontalAlignment="Center"/>
+                                <TextBlock Text="Нет выбранной записи"
+                                           Style="{StaticResource SectionTitle}"
+                                           Foreground="{StaticResource FilesTxt2Brush}"
+                                           TextAlignment="Center"
+                                           Margin="0,0,0,4"/>
+                                <TextBlock Text="Выберите элемент в списке слева или нажмите «Добавить», чтобы создать новый."
+                                           FontSize="12"
+                                           Foreground="{StaticResource FilesTxt3Brush}"
+                                           TextWrapping="Wrap"
+                                           TextAlignment="Center"/>
+                            </StackPanel>
+                        </Grid>
+                        </Grid>
                     </DockPanel>
                 </Grid>
             </TabItem>
