@@ -179,8 +179,8 @@
                     </Border>
 
                     <DockPanel Grid.Column="1" Background="{StaticResource FilesPanelBrush}">
-                    <Grid x:Name="EmptyHint" VerticalAlignment="Center" HorizontalAlignment="Center">
-                        <StackPanel Orientation="Vertical" HorizontalAlignment="Center" MaxWidth="300">
+                    <Grid x:Name="EmptyHint" VerticalAlignment="Stretch" HorizontalAlignment="Stretch">
+                        <StackPanel Orientation="Vertical" HorizontalAlignment="Center" MaxWidth="300" VerticalAlignment="Center">
                             <TextBlock Text="📝" FontSize="48" Opacity="0.2" Margin="0,0,0,12"
                                        HorizontalAlignment="Center"/>
                             <TextBlock Text="Нет выбранной записи"
