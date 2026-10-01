@@ -8,22 +8,33 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Обе версии сохранены. Выберите, что оставить." />
+        android:text="Обе версии сохранены. Выберите, что оставить."
+        android:textAppearance="@style/TextAppearance.SyncNote.Body"
+        android:textColor="@color/text_secondary" />
 
+    <!-- Элементы списка пар приходят из android.R.layout.simple_list_item_1
+         (ConflictsActivity.kt:95), поэтому их вид задаёт код, а не этот XML. -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/pairsList"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:layout_marginTop="8dp" />
+        android:layout_marginTop="8dp"
+        android:background="@color/bg_window" />
 
+    <!-- Сравнение версий: было android:background="#11000000" — hex в разметке.
+         Теперь ресурс из палитры, моноширинный блок как у техинформации файла. -->
     <TextView
         android:id="@+id/detailBox"
         android:layout_width="match_parent"
         android:layout_height="150dp"
         android:layout_marginTop="8dp"
-        android:background="#11000000"
-        android:padding="8dp" />
+        android:background="@drawable/bg_body_field"
+        android:padding="12dp"
+        android:fontFamily="monospace"
+        android:textSize="12sp"
+        android:textColor="@color/text_secondary"
+        android:textIsSelectable="true" />
 
     <LinearLayout
         android:orientation="horizontal"
@@ -31,30 +42,52 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp">
 
+        <!-- Основное действие — оставить текущую версию. -->
         <Button
             android:id="@+id/keepOriginalButton"
+            style="@style/Widget.SyncNote.Button.Primary"
             android:layout_width="0dp"
             android:layout_weight="1"
             android:layout_height="wrap_content"
+            android:minWidth="0dp"
+            android:paddingStart="6dp"
+            android:paddingEnd="6dp"
+            android:maxLines="2"
             android:textSize="12sp"
+            android:textAllCaps="false"
             android:text="Оставить текущую" />
 
         <Button
             android:id="@+id/takeCopyButton"
+            style="@style/Widget.SyncNote.Button.Default"
             android:layout_width="0dp"
             android:layout_weight="1"
             android:layout_height="wrap_content"
-            android:layout_marginStart="4dp"
+            android:layout_marginStart="8dp"
+            android:minWidth="0dp"
+            android:paddingStart="6dp"
+            android:paddingEnd="6dp"
+            android:maxLines="2"
             android:textSize="12sp"
+            android:textAllCaps="false"
             android:text="Взять копию" />
 
+        <!-- «Оставить обе» не разрушает данные (в отличие от двух других
+             действий, которые внутри удаляют версию), поэтому Danger здесь
+             вводил бы в заблуждение — оставляем Default. -->
         <Button
             android:id="@+id/keepBothButton"
+            style="@style/Widget.SyncNote.Button.Default"
             android:layout_width="0dp"
             android:layout_weight="1"
             android:layout_height="wrap_content"
-            android:layout_marginStart="4dp"
+            android:layout_marginStart="8dp"
+            android:minWidth="0dp"
+            android:paddingStart="6dp"
+            android:paddingEnd="6dp"
+            android:maxLines="2"
             android:textSize="12sp"
+            android:textAllCaps="false"
             android:text="Оставить обе" />
     </LinearLayout>
 </LinearLayout>

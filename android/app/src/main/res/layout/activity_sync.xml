@@ -12,36 +12,71 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Узел (адрес GO или 10.0.2.2 для проверки)" />
+            android:text="Узел (адрес GO или 10.0.2.2 для проверки)"
+            android:textAppearance="@style/TextAppearance.SyncNote.SectionTitle" />
 
         <EditText
             android:id="@+id/hostBox"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="10.0.2.2" />
+            android:text="10.0.2.2"
+            android:background="@drawable/bg_search_field"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:paddingTop="10dp"
+            android:paddingBottom="10dp"
+            android:textColor="@color/text_primary"
+            android:textColorHint="@color/text_hint"
+            android:textSize="13sp"
+            android:maxLines="1"
+            android:singleLine="true"
+            android:inputType="text" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="Порт" />
+            android:text="Порт"
+            android:textAppearance="@style/TextAppearance.SyncNote.SectionTitle" />
 
         <EditText
             android:id="@+id/portBox"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:inputType="number" />
+            android:inputType="number"
+            android:background="@drawable/bg_search_field"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:paddingTop="10dp"
+            android:paddingBottom="10dp"
+            android:textColor="@color/text_primary"
+            android:textColorHint="@color/text_hint"
+            android:textSize="13sp"
+            android:maxLines="1"
+            android:singleLine="true" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="Токен (первое подключение)" />
+            android:text="Токен (первое подключение)"
+            android:textAppearance="@style/TextAppearance.SyncNote.SectionTitle" />
 
         <EditText
             android:id="@+id/tokenBox"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content" />
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_search_field"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:paddingTop="10dp"
+            android:paddingBottom="10dp"
+            android:textColor="@color/text_primary"
+            android:textColorHint="@color/text_hint"
+            android:textSize="13sp"
+            android:maxLines="1"
+            android:singleLine="true"
+            android:inputType="text" />
 
         <LinearLayout
             android:orientation="horizontal"
@@ -51,37 +86,56 @@
 
             <Button
                 android:id="@+id/findButton"
+                style="@style/Widget.SyncNote.Button.Default"
                 android:layout_width="0dp"
                 android:layout_weight="1"
                 android:layout_height="wrap_content"
-                android:text="Найти ПК" />
+                android:minWidth="0dp"
+                android:text="Найти ПК"
+                android:textAllCaps="false" />
 
             <Button
                 android:id="@+id/scanButton"
+                style="@style/Widget.SyncNote.Button.Default"
                 android:layout_width="0dp"
                 android:layout_weight="1"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
-                android:text="QR" />
+                android:minWidth="0dp"
+                android:text="QR"
+                android:textAllCaps="false" />
 
             <Button
                 android:id="@+id/syncButton"
+                style="@style/Widget.SyncNote.Button.Primary"
                 android:layout_width="0dp"
                 android:layout_weight="1"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
-                android:text="Синхронизировать" />
+                android:minWidth="0dp"
+                android:paddingStart="4dp"
+                android:paddingEnd="4dp"
+                android:textSize="12sp"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:text="Синхронизировать"
+                android:textAllCaps="false" />
         </LinearLayout>
 
         <Button
             android:id="@+id/btButton"
+            style="@style/Widget.SyncNote.Button.Default"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="Подключиться по Bluetooth" />
+            android:text="Подключиться по Bluetooth"
+            android:textAllCaps="false" />
 
+        <!-- Строки пиров инфлятит ArrayAdapter с android.R.layout.simple_list_item_1
+             (SyncActivity.kt:208) — вид строк задаёт код, а не этот XML. -->
         <ListView
             android:id="@+id/peersList"
+            style="@style/Widget.SyncNote.ListView"
             android:layout_width="match_parent"
             android:layout_height="120dp"
             android:layout_marginTop="8dp" />
@@ -90,13 +144,18 @@
             android:id="@+id/peersInfo"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp" />
+            android:layout_marginTop="8dp"
+            android:textAppearance="@style/TextAppearance.SyncNote.Body"
+            android:textColor="@color/text_secondary" />
 
         <TextView
             android:id="@+id/stateText"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="Не подключено" />
+            android:text="Не подключено"
+            android:textAppearance="@style/TextAppearance.SyncNote.Body"
+            android:textColor="@color/text_primary"
+            android:textStyle="bold" />
     </LinearLayout>
 </ScrollView>
