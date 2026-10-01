@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
@@ -11,8 +13,6 @@ using SyncNote.Core.Interfaces;
 using SyncNote.Core.Models;
 using SyncNote.Core.Services;
 using SyncNote.Windows.Services;
-using SyncNote.Windows.ViewModels;
-using SyncNote.Windows.Views;
 
 namespace SyncNote.Windows;
 
@@ -42,7 +42,7 @@ public partial class MainWindow : Window
 
         _notes = new SqliteNoteRepo(_dbPath, Environment.MachineName);
         _fileIo = new WindowsFileIo(Path.Combine(Path.GetDirectoryName(_dbPath)!, "files"));
-        _files = new SqliteFileRepo(_dbPath, Environment.MachineName, new WindowsFileIo(Path.Combine(Path.GetDirectoryName(_dbPath)!, "files")));
+        _files = new SqliteFileRepo(_dbPath, Environment.MachineName, _fileIo);
         _sync = new SqlSyncStateStore(_dbPath);
 
         _vm = new MainViewModel(_notes, _files, _sync,
@@ -61,7 +61,7 @@ public partial class MainWindow : Window
 
     private void ShowPairingWindow()
     {
-        var pw = new PairingWindow(_dbPath, Environment.MachineName);
+        var pw = new Views.PairingWindow(_dbPath, Environment.MachineName);
         pw.Owner = this;
         pw.ShowDialog();
         // После закрытия окна сопряжения обновляем списки (могли прилететь новые)
@@ -86,7 +86,7 @@ public partial class MainWindow : Window
     }
 }
 
-public class MainViewModel : IDisposable, INotifyPropertyChanged
+public sealed class MainViewModel : IDisposable, INotifyPropertyChanged
 {
     private readonly INoteRepo _notes;
     private readonly IFileRepo _files;
@@ -95,10 +95,10 @@ public class MainViewModel : IDisposable, INotifyPropertyChanged
     private readonly IFileIo _fileIo;
     private readonly Window _owner;
     private readonly List<SelectableNote> _allNotes = new();
-    private readonly List<SelectableFile> _allFiles = new();
+    private readonly List<FileEntryViewModel> _allFiles = new();
     private string _searchQuery = "";
     private SelectableNote? _selectedNote;
-    private SelectableFile? _selectedFile;
+    private FileEntryViewModel? _selectedFile;
     private bool _showNotes = true;
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -120,7 +120,7 @@ public class MainViewModel : IDisposable, INotifyPropertyChanged
     public ICommand ExitCommand { get; }
 
     public IReadOnlyList<SelectableNote> Notes => _allNotes;
-    public IReadOnlyList<SelectableFile> Files => _allFiles;
+    public IReadOnlyList<FileEntryViewModel> Files => _allFiles;
 
     public bool ShowNotes
     {
@@ -162,13 +162,13 @@ public class MainViewModel : IDisposable, INotifyPropertyChanged
     public SelectableNote? SelectedNote
     {
         get => _selectedNote;
-        set { _selectedNote = value; OnProp(); OnProp(nameof(HasSelection)); CommandManager.InvalidateRequerySuggested(); }
+        set { _selectedNote = value; OnProp(); OnProp(nameof(HasSelection)); }
     }
 
-    public SelectableFile? SelectedFile
+    public FileEntryViewModel? SelectedFile
     {
         get => _selectedFile;
-        set { _selectedFile = value; OnProp(); OnProp(nameof(HasFileSelection)); CommandManager.InvalidateRequerySuggested(); }
+        set { _selectedFile = value; OnProp(); OnProp(nameof(HasFileSelection)); }
     }
 
     public bool HasSelection => _selectedNote != null;
@@ -183,7 +183,7 @@ public class MainViewModel : IDisposable, INotifyPropertyChanged
             foreach (var n in _allNotes)
                 n.IsVisible = string.IsNullOrEmpty(q) || n.Note.Title.ToLower().Contains(q);
             foreach (var f in _allFiles)
-                f.IsVisible = string.IsNullOrEmpty(q) || f.File.Name.ToLower().Contains(q);
+                f.IsVisible = string.IsNullOrEmpty(q) || f.Name.ToLower().Contains(q);
             OnProp(nameof(HasItems));
         }
     }
@@ -236,7 +236,7 @@ public class MainViewModel : IDisposable, INotifyPropertyChanged
     public void SaveSelected()
     {
         if (_selectedNote == null) return;
-        _notes.UpdateAsync(_selectedNote.Note).Wait();
+        _notes.UpdateAsync(_selectedNote.Note.Entry).Wait();
         RefreshAll();
     }
 
@@ -256,10 +256,45 @@ public class MainViewModel : IDisposable, INotifyPropertyChanged
     public void DeleteSelectedFile()
     {
         if (_selectedFile == null) return;
-        _files.SoftDeleteAsync(_selectedFile.File.Id).Wait();
+        _files.SoftDeleteAsync(_selectedFile.Id).Wait();
         SelectedFile = null;
         RefreshAll();
     }
+
+    public void RefreshAll()
+    {
+        var noteId = _selectedNote?.Note.Id;
+        var fileId = _selectedFile?.Id;
+        _allNotes.Clear();
+        foreach (var n in _notes.GetAllAsync(false).Result)
+        {
+            var vm = new NoteEntryViewModel(n, _sync.GetSyncRev("note", n.Id))
+            {
+                HasAttachments = _attachments.ListByNoteAsync(n.Id).Result.Count > 0,
+                HasChecklist = n.Body.Contains("- [ ]") || n.Body.Contains("- [x]"),
+            };
+            var sn = new SelectableNote(vm)
+            {
+                IsSynced = n.Rev <= _sync.GetSyncRev("note", n.Id)
+            };
+            _allNotes.Add(sn);
+        }
+        _allFiles.Clear();
+        foreach (var f in _files.GetAllAsync(false).Result)
+        {
+            var vm = new FileEntryViewModel(f, _sync.GetSyncRev("file", f.Id));
+            _allFiles.Add(vm);
+        }
+        SelectedNote = _allNotes.FirstOrDefault(n => n.Note.Id == noteId);
+        SelectedFile = _allFiles.FirstOrDefault(f => f.Id == fileId);
+        OnProp(nameof(Notes));
+        OnProp(nameof(Files));
+        OnProp(nameof(HasItems));
+    }
+
+    public void RefreshNotes() => RefreshAll();
+
+    public void Dispose() { }
 
     // --- Markdown-редактор ---
 
@@ -272,13 +307,13 @@ public class MainViewModel : IDisposable, INotifyPropertyChanged
         if (_selectedNote == null) return;
         if (box == null || string.IsNullOrEmpty(box.SelectedText))
         {
-            _selectedNote.Note.Body += marker + marker;
+            _selectedNote.Note.Entry.Body += marker + marker;
         }
         else
         {
             int start = box.SelectionStart;
             string sel = box.SelectedText;
-            _selectedNote.Note.Body = _selectedNote.Note.Body.Remove(start, sel.Length)
+            _selectedNote.Note.Entry.Body = _selectedNote.Note.Entry.Body.Remove(start, sel.Length)
                 .Insert(start, marker + sel + marker);
         }
         OnProp(nameof(SelectedNote));
@@ -287,10 +322,10 @@ public class MainViewModel : IDisposable, INotifyPropertyChanged
     private void AppendChecklistItem()
     {
         if (_selectedNote == null) return;
-        if (_selectedNote.Note.Body.Length > 0
-            && !_selectedNote.Note.Body.EndsWith("\n"))
-            _selectedNote.Note.Body += "\n";
-        _selectedNote.Note.Body += "- [ ] ";
+        if (_selectedNote.Note.Entry.Body.Length > 0
+            && !_selectedNote.Note.Entry.Body.EndsWith("\n"))
+            _selectedNote.Note.Entry.Body += "\n";
+        _selectedNote.Note.Entry.Body += "- [ ] ";
         OnProp(nameof(SelectedNote));
     }
 
@@ -303,7 +338,7 @@ public class MainViewModel : IDisposable, INotifyPropertyChanged
         if (want)
         {
             _selectedNote.PreviewDocument = MarkdownPreview.ToFlowDocument(
-                _selectedNote.Note.Body, OpenAttachmentLink);
+                _selectedNote.Note.Entry.Body, OpenAttachmentLink);
         }
     }
 
@@ -329,44 +364,25 @@ public class MainViewModel : IDisposable, INotifyPropertyChanged
         if (_selectedNote == null) return;
         try
         {
-            var log = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "syncnote-attach.log");
-            System.IO.File.AppendAllText(log, $"[{DateTime.Now}] AttachFile called\n");
-            
             var dlg = new Microsoft.Win32.OpenFileDialog
             {
                 Title = "Прикрепить файл к заметке"
             };
-            System.IO.File.AppendAllText(log, $"[{DateTime.Now}] ShowDialog called\n");
-            if (dlg.ShowDialog() != true) 
-            {
-                System.IO.File.AppendAllText(log, $"[{DateTime.Now}] ShowDialog returned false\n");
-                return; 
-            }
-            System.IO.File.AppendAllText(log, $"[{DateTime.Now}] File selected: {dlg.FileName}\n");
-            
+            if (dlg.ShowDialog() != true) return;
             string name = Path.GetFileName(dlg.FileName);
             var (sha, size) = await _fileIo.ImportAsync(dlg.FileName);
-            System.IO.File.AppendAllText(log, $"[{DateTime.Now}] Imported: sha={sha} size={size}\n");
-            
             await _attachments.InsertAsync(
                 _selectedNote.Note.Id, name, MimeOf(name), size, sha);
-            System.IO.File.AppendAllText(log, $"[{DateTime.Now}] Inserted to DB\n");
-            
-            if (_selectedNote.Note.Body.Length > 0
-                && !_selectedNote.Note.Body.EndsWith("\n"))
-                _selectedNote.Note.Body += "\n";
-            _selectedNote.Note.Body += $"[📎 {name}](file://{sha})";
-            await _notes.UpdateAsync(_selectedNote.Note);
-            System.IO.File.AppendAllText(log, $"[{DateTime.Now}] Note updated\n");
-            
+            if (_selectedNote.Note.Entry.Body.Length > 0
+                && !_selectedNote.Note.Entry.Body.EndsWith("\n"))
+                _selectedNote.Note.Entry.Body += "\n";
+            _selectedNote.Note.Entry.Body += $"[📎 {name}](file://{sha})";
+            await _notes.UpdateAsync(_selectedNote.Note.Entry);
             RefreshAll();
-            System.IO.File.AppendAllText(log, $"[{DateTime.Now}] Refreshed\n");
         }
         catch (Exception ex)
         {
-            System.IO.File.AppendAllText(
-                System.IO.Path.Combine(System.IO.Path.GetTempPath(), "syncnote-attach.log"),
-                $"[{DateTime.Now}] ERROR: {ex}\n");
+            System.Diagnostics.Debug.WriteLine($"AttachFile error: {ex}");
             throw;
         }
     }
@@ -386,99 +402,6 @@ public class MainViewModel : IDisposable, INotifyPropertyChanged
             _ => "application/octet-stream",
         };
     }
-
-    public void RefreshAll()
-    {
-        var noteId = _selectedNote?.Note.Id;
-        var fileId = _selectedFile?.File.Id;
-        _allNotes.Clear();
-        foreach (var n in _notes.GetAllAsync(false).Result)
-        {
-            var sn = new SelectableNote(n)
-            {
-                IsSynced = n.Rev <= _sync.GetSyncRev("note", n.Id)
-            };
-            _allNotes.Add(sn);
-        }
-        _allFiles.Clear();
-        foreach (var f in _files.GetAllAsync(false).Result)
-        {
-            var sf = new SelectableFile(f)
-            {
-                IsSynced = f.Rev <= _sync.GetSyncRev("file", f.Id)
-            };
-            _allFiles.Add(sf);
-        }
-        SelectedNote = _allNotes.FirstOrDefault(n => n.Note.Id == noteId);
-        SelectedFile = _allFiles.FirstOrDefault(f => f.File.Id == fileId);
-        OnProp(nameof(Notes));
-        OnProp(nameof(Files));
-        OnProp(nameof(HasItems));
-    }
-
-    // Совместимость со старым вызовом после сопряжения.
-    public void RefreshNotes() => RefreshAll();
-
-    public void Dispose() { }
-}
-
-public sealed class SelectableNote : INotifyPropertyChanged
-{
-    public NoteEntry Note { get; }
-    public bool IsVisible { get; set; } = true;
-    public bool IsSynced { get; set; } = true;
-    public string Badge => IsSynced ? "✓" : "●";
-    private bool _selected;
-    public bool IsSelected
-    {
-        get => _selected;
-        set { _selected = value; PropertyChanged?.Invoke(this, new(nameof(IsSelected))); }
-    }
-    private bool _isPreview;
-    public bool IsPreview
-    {
-        get => _isPreview;
-        set
-        {
-            _isPreview = value;
-            PropertyChanged?.Invoke(this, new(nameof(IsPreview)));
-            PropertyChanged?.Invoke(this, new(nameof(IsEditing)));
-        }
-    }
-    public bool IsEditing => !IsPreview;
-    private System.Windows.Documents.FlowDocument? _preview;
-    public System.Windows.Documents.FlowDocument? PreviewDocument
-    {
-        get => _preview;
-        set { _preview = value; PropertyChanged?.Invoke(this, new(nameof(PreviewDocument))); }
-    }
-    public event PropertyChangedEventHandler? PropertyChanged;
-
-    public SelectableNote(NoteEntry n) => Note = n;
-}
-
-public sealed class SelectableFile : INotifyPropertyChanged
-{
-    public FileEntry File { get; }
-    public bool IsVisible { get; set; } = true;
-    public bool IsSynced { get; set; } = true;
-    public string Badge => IsSynced ? "✓" : "●";
-    public string SizeText
-    {
-        get
-        {
-            long b = File.SizeBytes;
-            if (b < 1024) return $"{b} Б";
-            double kb = b / 1024.0;
-            if (kb < 1024) return $"{kb:F1} КБ";
-            double mb = kb / 1024.0;
-            if (mb < 1024) return $"{mb:F1} МБ";
-            return $"{mb / 1024.0:F2} ГБ";
-        }
-    }
-    public event PropertyChangedEventHandler? PropertyChanged;
-
-    public SelectableFile(FileEntry f) => File = f;
 }
 
 public sealed class RelayCommand(Action<object?> execute, Func<object?, bool>? canExecute = null) : ICommand

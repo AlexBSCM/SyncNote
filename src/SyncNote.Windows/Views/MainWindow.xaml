@@ -4,7 +4,7 @@
         xmlns:local="clr-namespace:SyncNote.Windows.Views"
         Title="SyncNote" Height="600" Width="900" MinHeight="480" MinWidth="720"
         WindowStartupLocation="CenterScreen"
-        Background="{StaticResource BgPrimaryBrush}">
+        Background="{StaticResource FilesPanelBrush}">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -12,24 +12,24 @@
         </Grid.RowDefinitions>
 
         <!-- ROW 0: TOOLBAR -->
-        <Border Grid.Row="0" Background="{StaticResource BgPrimaryBrush}"
-                BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,0,0,1">
+        <Border Grid.Row="0" Background="{StaticResource FilesPanelBrush}"
+                BorderBrush="{StaticResource FilesLineBrush}" BorderThickness="0,0,0,1">
             <DockPanel LastChildFill="False" Margin="12,8">
                 <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
-                    <Button Content="＋ Новая заметка" Style="{StaticResource PrimaryButton}"
+                    <Button Content="＋ Новая заметка" Style="{StaticResource FilesBtnPrimary}"
                             Command="{Binding AddNoteCommand}"/>
-                    <Button Content="⚙ Настройки" Style="{StaticResource DefaultButton}"
+                    <Button Content="⚙ Настройки" Style="{StaticResource FilesBtnDefault}"
                             Margin="8,0,0,0" Command="{Binding OpenSettingsCommand}"/>
-                    <Button Content="📱 Сопряжение..." Style="{StaticResource DefaultButton}"
+                    <Button Content="📱 Сопряжение..." Style="{StaticResource FilesBtnDefault}"
                             Margin="8,0,0,0" Command="{Binding ShowPairingCommand}"/>
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
                     <RadioButton GroupName="Tabs" Content="Заметки"
                                  IsChecked="{Binding ShowNotes, Mode=TwoWay}"
-                                 Style="{StaticResource TabStyle}"/>
+                                 Style="{StaticResource TabPill}"/>
                     <RadioButton GroupName="Tabs" Content="Файлы" Margin="4,0,0,0"
                                  IsChecked="{Binding ShowFiles, Mode=TwoWay}"
-                                 Style="{StaticResource TabStyle}"/>
+                                 Style="{StaticResource TabPill}"/>
                 </StackPanel>
             </DockPanel>
         </Border>
@@ -42,50 +42,104 @@
             </Grid.ColumnDefinitions>
 
             <!-- LEFT: LIST -->
-            <Border Grid.Column="0" Background="{StaticResource BgSecondaryBrush}"
-                    BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,0,1,0">
+            <Border Grid.Column="0" Background="{StaticResource FilesPanel2Brush}"
+                    BorderBrush="{StaticResource FilesLineBrush}" BorderThickness="0,0,1,0">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
                     <TextBox Grid.Row="0" Margin="12,12,12,8"
-                             Style="{StaticResource SearchBoxStyle}"
+                             Style="{StaticResource FilesSearchBox}"
                              Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}"/>
 
                     <Grid Grid.Row="1">
                         <ListBox ItemsSource="{Binding Notes}"
                                  SelectedItem="{Binding SelectedNote, Mode=TwoWay}"
                                  Visibility="{Binding NotesVisible}"
-                                 Background="Transparent" BorderThickness="0" Padding="8,0,8,8"
-                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                 Style="{StaticResource FilesList}"
+                                 ItemContainerStyle="{StaticResource FilesListItem}">
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
-                                    <DockPanel LastChildFill="True">
-                                        <TextBlock Text="📝" FontSize="16" VerticalAlignment="Center"
-                                                   DockPanel.Dock="Left"/>
-                                        <TextBlock Text="{Binding Badge}" FontSize="13" FontWeight="Bold"
-                                                   VerticalAlignment="Center" Margin="8,0,0,0"
-                                                   DockPanel.Dock="Right">
-                                            <TextBlock.Style>
-                                                <Style TargetType="TextBlock">
-                                                    <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding IsSynced}" Value="True">
-                                                            <Setter Property="Foreground" Value="{StaticResource OkFgBrush}" />
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </TextBlock.Style>
-                                        </TextBlock>
-                                        <StackPanel Margin="8,0,0,0">
-                                            <TextBlock Text="{Binding Note.Title}" FontWeight="Bold"
-                                                       Foreground="{StaticResource TextPrimaryBrush}"
-                                                       TextTrimming="CharacterEllipsis"/>
-                                            <TextBlock Text="{Binding Note.UpdatedAt}" FontSize="11"
-                                                       Foreground="{StaticResource TextSecondaryBrush}"/>
+                                    <StackPanel>
+                                        <DockPanel LastChildFill="True">
+                                            <TextBlock Text="📝" FontSize="16" VerticalAlignment="Center"
+                                                       DockPanel.Dock="Left"/>
+                                            <Border CornerRadius="10" Padding="8,2" Margin="8,0,0,0"
+                                                    VerticalAlignment="Center" DockPanel.Dock="Right">
+                                                <Border.Style>
+                                                    <Style TargetType="Border">
+                                                        <Setter Property="Background" Value="{StaticResource FilesOkBgBrush}" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Note.IsModified}" Value="True">
+                                                                <Setter Property="Background" Value="{StaticResource FilesWarnBgBrush}" />
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding Note.IsConflict}" Value="True">
+                                                                <Setter Property="Background" Value="{StaticResource FilesErrBgBrush}" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Border.Style>
+                                                <TextBlock Text="{Binding Note.SyncBadgeText}"
+                                                           FontSize="10" FontWeight="Bold">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Foreground" Value="{StaticResource FilesOkFgBrush}" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding Note.IsModified}" Value="True">
+                                                                    <Setter Property="Foreground" Value="{StaticResource FilesWarnFgBrush}" />
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding Note.IsConflict}" Value="True">
+                                                                    <Setter Property="Foreground" Value="{StaticResource FilesErrBrush}" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                            </Border>
+                                            <StackPanel Margin="8,0,0,0">
+                                                <TextBlock Text="{Binding Note.Title}" FontWeight="SemiBold"
+                                                           FontSize="13"
+                                                           Foreground="{StaticResource FilesTxtBrush}"
+                                                           TextTrimming="CharacterEllipsis"/>
+                                                <TextBlock Text="{Binding Note.FormattedDate}" FontSize="11"
+                                                           Margin="0,2,0,0"
+                                                           Foreground="{StaticResource FilesTxt3Brush}"/>
+                                            </StackPanel>
+                                        </DockPanel>
+                                        <TextBlock Text="{Binding Note.Body}" FontSize="12"
+                                                   Foreground="{StaticResource FilesTxt2Brush}"
+                                                   Margin="24,4,0,0" MaxHeight="32"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   TextWrapping="Wrap"/>
+                                        <StackPanel Orientation="Horizontal" Margin="24,2,0,0">
+                                            <TextBlock Text="📎" FontSize="11" VerticalAlignment="Center">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Note.HasAttachments}" Value="True">
+                                                                <Setter Property="Visibility" Value="Visible" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                            <TextBlock Text="☑" FontSize="11" Margin="4,0,0,0"
+                                                       VerticalAlignment="Center">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Note.HasChecklist}" Value="True">
+                                                                <Setter Property="Visibility" Value="Visible" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
                                         </StackPanel>
-                                    </DockPanel>
+                                    </StackPanel>
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
                         </ListBox>
@@ -93,45 +147,72 @@
                         <ListBox ItemsSource="{Binding Files}"
                                  SelectedItem="{Binding SelectedFile, Mode=TwoWay}"
                                  Visibility="{Binding FilesVisible}"
-                                 Background="Transparent" BorderThickness="0" Padding="8,0,8,8"
-                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                 Style="{StaticResource FilesList}"
+                                 ItemContainerStyle="{StaticResource FilesListItem}">
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
-                                    <DockPanel LastChildFill="True">
-                                        <TextBlock Text="📄" FontSize="16" VerticalAlignment="Center"
-                                                   DockPanel.Dock="Left"/>
-                                        <TextBlock Text="{Binding Badge}" FontSize="13" FontWeight="Bold"
-                                                   VerticalAlignment="Center" Margin="8,0,0,0"
-                                                   DockPanel.Dock="Right">
-                                            <TextBlock.Style>
-                                                <Style TargetType="TextBlock">
-                                                    <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <Border Width="36" Height="36" CornerRadius="8"
+                                                Background="{StaticResource FilesPanel2Brush}"
+                                                VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding DisplayIcon}" FontSize="18"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center" />
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Margin="10,0,0,0"
+                                                    VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
+                                                       FontSize="13"
+                                                       Foreground="{StaticResource FilesTxtBrush}"
+                                                       TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding MetaLine}" FontSize="11"
+                                                       Margin="0,2,0,0"
+                                                       Foreground="{StaticResource FilesTxt3Brush}" />
+                                        </StackPanel>
+                                        <Border Grid.Column="2" CornerRadius="10" Padding="8,3"
+                                                Margin="8,0,0,0" VerticalAlignment="Center">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Background" Value="{StaticResource FilesOkBgBrush}" />
                                                     <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding IsSynced}" Value="True">
-                                                            <Setter Property="Foreground" Value="{StaticResource OkFgBrush}" />
+                                                        <DataTrigger Binding="{Binding IsModified}" Value="True">
+                                                            <Setter Property="Background" Value="{StaticResource FilesWarnBgBrush}" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding IsConflict}" Value="True">
+                                                            <Setter Property="Background" Value="{StaticResource FilesErrBgBrush}" />
                                                         </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
-                                            </TextBlock.Style>
-                                        </TextBlock>
-                                        <StackPanel Margin="8,0,0,0">
-                                            <TextBlock Text="{Binding File.Name}" FontWeight="Bold"
-                                                       Foreground="{StaticResource TextPrimaryBrush}"
-                                                       TextTrimming="CharacterEllipsis"/>
-                                            <TextBlock FontSize="11"
-                                                       Foreground="{StaticResource TextSecondaryBrush}">
-                                                <Run Text="{Binding SizeText, Mode=OneWay}" />
-                                                <Run Text=" · " />
-                                                <Run Text="{Binding File.Mime, Mode=OneWay}" />
+                                            </Border.Style>
+                                            <TextBlock Text="{Binding StatusBadgeText}"
+                                                       FontSize="10" FontWeight="Bold">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Foreground" Value="{StaticResource FilesOkFgBrush}" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsModified}" Value="True">
+                                                                <Setter Property="Foreground" Value="{StaticResource FilesWarnFgBrush}" />
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding IsConflict}" Value="True">
+                                                                <Setter Property="Foreground" Value="{StaticResource FilesErrBrush}" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
                                             </TextBlock>
-                                        </StackPanel>
-                                    </DockPanel>
+                                        </Border>
+                                    </Grid>
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
                         </ListBox>
 
                         <TextBlock Text="Нет данных" HorizontalAlignment="Center" VerticalAlignment="Center"
-                                   Foreground="{StaticResource TextHintBrush}" FontSize="14"
+                                   Foreground="{StaticResource FilesTxt3Brush}" FontSize="13"
                                    Visibility="{Binding HasItems, Converter={StaticResource InverseBoolToVis}}"/>
                     </Grid>
                 </Grid>
@@ -139,7 +220,8 @@
 
             <!-- RIGHT: DETAILS -->
             <ContentControl Grid.Column="1" Content="{Binding SelectedNote}"
-                            Visibility="{Binding NotesVisible}">
+                            Visibility="{Binding NotesVisible}"
+                            Background="{StaticResource FilesPanelBrush}">
                 <ContentControl.ContentTemplate>
                     <DataTemplate>
                         <Grid Margin="16">
@@ -151,51 +233,51 @@
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
                             <TextBox Grid.Row="0" Margin="0,0,0,12"
-                                     Style="{StaticResource EditorTitle}"
+                                     Style="{StaticResource NoteTitleBox}"
                                      Text="{Binding Note.Title, UpdateSourceTrigger=PropertyChanged}"/>
                             <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
                                 <Button Content="B" FontWeight="Bold" Width="36"
-                                        Style="{StaticResource DefaultButton}"
+                                        Style="{StaticResource FilesBtnDefault}"
                                         Command="{Binding DataContext.FormatBoldCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                         CommandParameter="{Binding ElementName=BodyBox}"/>
                                 <Button Content="I" FontStyle="Italic" Width="36" Margin="4,0,0,0"
-                                        Style="{StaticResource DefaultButton}"
+                                        Style="{StaticResource FilesBtnDefault}"
                                         Command="{Binding DataContext.FormatItalicCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                         CommandParameter="{Binding ElementName=BodyBox}"/>
                                 <Button Content="☑ List" Margin="4,0,0,0"
-                                        Style="{StaticResource DefaultButton}"
+                                        Style="{StaticResource FilesBtnDefault}"
                                         Command="{Binding DataContext.FormatListCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
                                 <Button Content="📎 Attach" Margin="4,0,0,0"
-                                        Style="{StaticResource DefaultButton}"
+                                        Style="{StaticResource FilesBtnDefault}"
                                         Command="{Binding DataContext.AttachFileCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
                             </StackPanel>
                             <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,8">
                                 <RadioButton GroupName="NoteMode" Content="Редактирование"
                                              IsChecked="{Binding IsEditing, Mode=OneWay}"
-                                             Style="{StaticResource TabStyle}"
+                                             Style="{StaticResource TabPill}"
                                              Command="{Binding DataContext.SetPreviewCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                              CommandParameter="0"/>
                                 <RadioButton GroupName="NoteMode" Content="Просмотр" Margin="4,0,0,0"
                                              IsChecked="{Binding IsPreview, Mode=OneWay}"
-                                             Style="{StaticResource TabStyle}"
+                                             Style="{StaticResource TabPill}"
                                              Command="{Binding DataContext.SetPreviewCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                              CommandParameter="1"/>
                             </StackPanel>
                             <TextBox Grid.Row="3" x:Name="BodyBox" AcceptsReturn="True" TextWrapping="Wrap"
                                      VerticalScrollBarVisibility="Auto"
-                                     Style="{StaticResource EditorBody}"
+                                     Style="{StaticResource NoteBodyBox}"
                                      Text="{Binding Note.Body, UpdateSourceTrigger=PropertyChanged}"
-                                     Visibility="{Binding IsEditing, Converter={StaticResource BooleanToVisibility}}"/>
+                                     Visibility="{Binding IsEditing, Converter={StaticResource BoolToVis}}"/>
                             <FlowDocumentScrollViewer Grid.Row="3"
                                          VerticalScrollBarVisibility="Auto"
-                                         Padding="12" Background="{StaticResource BgPrimaryBrush}"
+                                         Padding="12" Background="{StaticResource FilesPanelBrush}"
                                          Document="{Binding PreviewDocument}"
-                                         Visibility="{Binding IsPreview, Converter={StaticResource BooleanToVisibility}}"/>
+                                         Visibility="{Binding IsPreview, Converter={StaticResource BoolToVis}}"/>
                             <StackPanel Grid.Row="4" Orientation="Horizontal" Margin="0,12,0,0">
-                                <Button Content="Сохранить" Style="{StaticResource PrimaryButton}"
+                                <Button Content="Сохранить" Style="{StaticResource FilesBtnPrimary}"
                                         Command="{Binding DataContext.SaveNoteCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
-                                <Button Content="Удалить" Style="{StaticResource DefaultButton}"
-                                        Margin="8,0,0,0" Foreground="{StaticResource ErrFgBrush}"
+                                <Button Content="Удалить" Style="{StaticResource FilesBtnDanger}"
+                                        Margin="8,0,0,0"
                                         Command="{Binding DataContext.DeleteNoteCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
                             </StackPanel>
                         </Grid>
@@ -204,7 +286,8 @@
             </ContentControl>
 
             <ContentControl Grid.Column="1" Content="{Binding SelectedFile}"
-                            Visibility="{Binding FilesVisible}">
+                            Visibility="{Binding FilesVisible}"
+                            Background="{StaticResource FilesPanelBrush}">
                 <ContentControl.ContentTemplate>
                     <DataTemplate>
                         <ScrollViewer Margin="16">
@@ -213,26 +296,25 @@
                                     <StackPanel>
                                         <TextBlock Text="📄 Информация о файле"
                                                    Style="{StaticResource SectionTitle}"/>
-                                        <TextBlock Text="{Binding File.Name}" FontSize="16" FontWeight="Bold"
-                                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                        <TextBlock Text="{Binding Name}" FontSize="16" FontWeight="Bold"
+                                                   Foreground="{StaticResource FilesTxtBrush}"
                                                    TextWrapping="Wrap"/>
                                         <TextBlock Margin="0,8,0,0" FontSize="13"
-                                                   Foreground="{StaticResource TextSecondaryBrush}">
-                                            <Run Text="{Binding SizeText}" />
+                                                   Foreground="{StaticResource FilesTxt2Brush}">
+                                            <Run Text="{Binding FormattedSize, Mode=OneWay}" />
                                             <Run Text=" · " />
-                                            <Run Text="{Binding File.Mime}" />
+                                            <Run Text="{Binding Mime, Mode=OneWay}" />
                                         </TextBlock>
-                                        <TextBlock Text="{Binding File.Sha256}" FontSize="11"
-                                                   Foreground="{StaticResource TextHintBrush}"
+                                        <TextBlock Text="{Binding Sha256}" FontSize="11"
+                                                   Foreground="{StaticResource FilesTxt3Brush}"
                                                    TextWrapping="Wrap" Margin="0,4,0,0"/>
-                                        <TextBlock Text="{Binding File.UpdatedAt}" FontSize="11"
-                                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                        <TextBlock Text="{Binding FormattedDate}" FontSize="11"
+                                                   Foreground="{StaticResource FilesTxt2Brush}"
                                                    Margin="0,4,0,0"/>
                                     </StackPanel>
                                 </Border>
                                 <StackPanel Orientation="Horizontal">
-                                    <Button Content="Удалить" Style="{StaticResource DefaultButton}"
-                                            Foreground="{StaticResource ErrFgBrush}"
+                                    <Button Content="Удалить" Style="{StaticResource FilesBtnDanger}"
                                             Command="{Binding DataContext.DeleteFileCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
                                 </StackPanel>
                             </StackPanel>

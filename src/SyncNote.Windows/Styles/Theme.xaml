@@ -3,43 +3,237 @@
                     xmlns:views="clr-namespace:SyncNote.Windows.Views">
 
     <views:InverseBoolToVisibilityConverter x:Key="InverseBoolToVis" />
-    <BooleanToVisibilityConverter x:Key="BooleanToVisibility" />
+    <BooleanToVisibilityConverter x:Key="BoolToVis" />
 
-    <!-- Палитра SyncNote v2: зеркало Android colors.xml.
-         Весь hex — только здесь, в разметке hex-кодов нет. -->
-    <Color x:Key="Accent">#3F51B5</Color>
-    <Color x:Key="AccentHover">#354499</Color>
-    <Color x:Key="AccentSoft">#1A3F51B5</Color>
-    <Color x:Key="BgPrimary">#FFFFFF</Color>
-    <Color x:Key="BgSecondary">#F7F7F8</Color>
-    <Color x:Key="TextPrimary">#1B1B1F</Color>
-    <Color x:Key="TextSecondary">#6A6A72</Color>
-    <Color x:Key="TextHint">#9A9AA2</Color>
-    <Color x:Key="BorderLine">#E2E2E6</Color>
-    <Color x:Key="OkFg">#1C7A39</Color>
-    <Color x:Key="ErrFg">#D63B3B</Color>
+    <!-- Палитра SyncNote v2: зеркало v1 FilesTheme.xaml. Весь hex — только здесь. -->
 
-    <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource Accent}" />
-    <SolidColorBrush x:Key="AccentHoverBrush" Color="{StaticResource AccentHover}" />
-    <SolidColorBrush x:Key="AccentSoftBrush" Color="{StaticResource AccentSoft}" />
-    <SolidColorBrush x:Key="BgPrimaryBrush" Color="{StaticResource BgPrimary}" />
-    <SolidColorBrush x:Key="BgSecondaryBrush" Color="{StaticResource BgSecondary}" />
-    <SolidColorBrush x:Key="TextPrimaryBrush" Color="{StaticResource TextPrimary}" />
-    <SolidColorBrush x:Key="TextSecondaryBrush" Color="{StaticResource TextSecondary}" />
-    <SolidColorBrush x:Key="TextHintBrush" Color="{StaticResource TextHint}" />
-    <SolidColorBrush x:Key="BorderLineBrush" Color="{StaticResource BorderLine}" />
-    <SolidColorBrush x:Key="OkFgBrush" Color="{StaticResource OkFg}" />
-    <SolidColorBrush x:Key="ErrFgBrush" Color="{StaticResource ErrFg}" />
+    <Color x:Key="FilesAccent">#3F51B5</Color>
+    <Color x:Key="FilesAccentHover">#354499</Color>
+    <Color x:Key="FilesAccentSoft">#1A3F51B5</Color>
+    <Color x:Key="FilesPanel">#FFFFFF</Color>
+    <Color x:Key="FilesPanel2">#F7F7F8</Color>
+    <Color x:Key="FilesLine">#E2E2E6</Color>
+    <Color x:Key="FilesLineSoft">#EDEDF0</Color>
+    <Color x:Key="FilesTxt">#1B1B1F</Color>
+    <Color x:Key="FilesTxt2">#6A6A72</Color>
+    <Color x:Key="FilesTxt3">#9A9AA2</Color>
+    <Color x:Key="FilesOk">#2E9E4F</Color>
+    <Color x:Key="FilesOkBg">#262E9E4F</Color>
+    <Color x:Key="FilesOkFg">#1C7A39</Color>
+    <Color x:Key="FilesWarn">#E8A317</Color>
+    <Color x:Key="FilesWarnBg">#26E8A317</Color>
+    <Color x:Key="FilesWarnFg">#9A6B00</Color>
+    <Color x:Key="FilesErr">#D63B3B</Color>
+    <Color x:Key="FilesErrBg">#1AD63B3B</Color>
 
-    <!-- Элемент списка: padding 10, без рамок; ховер — BgSecondary;
-         выбранный — акцентная заливка + левая граница 3px. -->
-    <Style TargetType="ListBoxItem">
+    <SolidColorBrush x:Key="FilesAccentBrush" Color="{StaticResource FilesAccent}" />
+    <SolidColorBrush x:Key="FilesAccentHoverBrush" Color="{StaticResource FilesAccentHover}" />
+    <SolidColorBrush x:Key="FilesAccentSoftBrush" Color="{StaticResource FilesAccentSoft}" />
+    <SolidColorBrush x:Key="FilesPanelBrush" Color="{StaticResource FilesPanel}" />
+    <SolidColorBrush x:Key="FilesPanel2Brush" Color="{StaticResource FilesPanel2}" />
+    <SolidColorBrush x:Key="FilesLineBrush" Color="{StaticResource FilesLine}" />
+    <SolidColorBrush x:Key="FilesLineSoftBrush" Color="{StaticResource FilesLineSoft}" />
+    <SolidColorBrush x:Key="FilesTxtBrush" Color="{StaticResource FilesTxt}" />
+    <SolidColorBrush x:Key="FilesTxt2Brush" Color="{StaticResource FilesTxt2}" />
+    <SolidColorBrush x:Key="FilesTxt3Brush" Color="{StaticResource FilesTxt3}" />
+    <SolidColorBrush x:Key="FilesOkBgBrush" Color="{StaticResource FilesOkBg}" />
+    <SolidColorBrush x:Key="FilesOkFgBrush" Color="{StaticResource FilesOkFg}" />
+    <SolidColorBrush x:Key="FilesWarnBgBrush" Color="{StaticResource FilesWarnBg}" />
+    <SolidColorBrush x:Key="FilesWarnFgBrush" Color="{StaticResource FilesWarnFg}" />
+    <SolidColorBrush x:Key="FilesErrBrush" Color="{StaticResource FilesErr}" />
+    <SolidColorBrush x:Key="FilesErrBgBrush" Color="{StaticResource FilesErrBg}" />
+    <SolidColorBrush x:Key="FilesSpoilerOverlayBrush" Color="#F2FFFFFF" />
+
+    <!-- Поиск в тулбаре: padding 8x10, radius 6, фокус акцентом. -->
+    <Style x:Key="FilesSearchBox" TargetType="TextBox">
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="Foreground" Value="{StaticResource FilesTxtBrush}" />
+        <Setter Property="Padding" Value="10,8" />
+        <Setter Property="BorderBrush" Value="{StaticResource FilesLineBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Background" Value="{StaticResource FilesPanelBrush}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TextBox">
+                    <Border Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="6"
+                            Padding="{TemplateBinding Padding}">
+                        <ScrollViewer x:Name="PART_ContentHost" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsFocused" Value="True">
+                            <Setter Property="BorderBrush" Value="{StaticResource FilesAccentBrush}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Базовый каркас кнопок: flat, radius 6, padding 8x16. -->
+    <Style x:Key="FilesBtnBase" TargetType="Button">
+        <Setter Property="Padding" Value="16,8" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="6"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center"
+                                          VerticalAlignment="Center" />
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Primary: индиго, hover темнее. -->
+    <Style x:Key="FilesBtnPrimary" TargetType="Button"
+           BasedOn="{StaticResource FilesBtnBase}">
+        <Setter Property="Background" Value="{StaticResource FilesAccentBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource FilesAccentBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Foreground" Value="White" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="6"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center"
+                                          VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Background" Value="{StaticResource FilesAccentHoverBrush}" />
+                            <Setter Property="BorderBrush" Value="{StaticResource FilesAccentHoverBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.5" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Обычная: белый фон, серая рамка, hover акцентом. -->
+    <Style x:Key="FilesBtnDefault" TargetType="Button"
+           BasedOn="{StaticResource FilesBtnBase}">
+        <Setter Property="Background" Value="{StaticResource FilesPanelBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource FilesLineBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Foreground" Value="{StaticResource FilesTxtBrush}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="6"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center"
+                                          VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="BorderBrush" Value="{StaticResource FilesAccentBrush}" />
+                            <Setter Property="Foreground" Value="{StaticResource FilesAccentBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.5" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Danger: прозрачная, красная; hover — красная рамка и фон. -->
+    <Style x:Key="FilesBtnDanger" TargetType="Button"
+           BasedOn="{StaticResource FilesBtnBase}">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Foreground" Value="{StaticResource FilesErrBrush}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="6"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center"
+                                          VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Background" Value="{StaticResource FilesErrBgBrush}" />
+                            <Setter Property="BorderBrush" Value="{StaticResource FilesErrBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.5" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Ручка спойлера: компактная, без рамок, hover акцентом. -->
+    <Style x:Key="FilesSpoilerToggle" TargetType="Button">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Foreground" Value="{StaticResource FilesTxt2Brush}" />
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Padding" Value="12,0" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border Background="{TemplateBinding Background}"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                          VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Foreground" Value="{StaticResource FilesAccentBrush}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Список: белый фон, без рамок, отступ 8. -->
+    <Style x:Key="FilesList" TargetType="ListBox">
+        <Setter Property="Background" Value="{StaticResource FilesPanelBrush}" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="8" />
+        <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+    </Style>
+
+    <!-- Строка списка: padding 10, без фокусной рамки,
+         hover panel-2, selected — акцентная заливка + левая граница. -->
+    <Style x:Key="FilesListItem" TargetType="ListBoxItem">
         <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Padding" Value="10" />
         <Setter Property="Margin" Value="0,0,0,2" />
         <Setter Property="Background" Value="Transparent" />
-        <Setter Property="BorderBrush" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="BorderBrush" Value="Transparent" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ListBoxItem">
@@ -55,123 +249,46 @@
         </Setter>
         <Style.Triggers>
             <Trigger Property="IsMouseOver" Value="True">
-                <Setter Property="Background" Value="{StaticResource BgSecondaryBrush}" />
+                <Setter Property="Background" Value="{StaticResource FilesPanel2Brush}" />
             </Trigger>
             <Trigger Property="IsSelected" Value="True">
-                <Setter Property="Background" Value="{StaticResource AccentSoftBrush}" />
-                <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                <Setter Property="Background" Value="{StaticResource FilesAccentSoftBrush}" />
+                <Setter Property="BorderBrush" Value="{StaticResource FilesAccentBrush}" />
                 <Setter Property="BorderThickness" Value="3,0,0,0" />
             </Trigger>
         </Style.Triggers>
     </Style>
 
-    <!-- Primary-кнопка: фон акцент, белый текст, radius 6. -->
-    <Style x:Key="PrimaryButton" TargetType="Button">
-        <Setter Property="Background" Value="{StaticResource AccentBrush}" />
-        <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+    <!-- ===== Этап F.8: унификация «Заметок» и «Настроек» ===== -->
+    <!-- Все цвета — только из палитры выше, новых hex в XAML нет. -->
+
+    <!-- Карточка секции настроек: белый фон, radius 10, padding 16. -->
+    <Style x:Key="CardSection" TargetType="Border">
+        <Setter Property="Background" Value="{StaticResource FilesPanelBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource FilesLineBrush}" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="Foreground" Value="White" />
-        <Setter Property="FontSize" Value="13" />
-        <Setter Property="FontWeight" Value="SemiBold" />
-        <Setter Property="Padding" Value="16,8" />
-        <Setter Property="Cursor" Value="Hand" />
-        <Setter Property="Template">
-            <Setter.Value>
-                <ControlTemplate TargetType="Button">
-                    <Border Background="{TemplateBinding Background}"
-                            BorderBrush="{TemplateBinding BorderBrush}"
-                            BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="6"
-                            Padding="{TemplateBinding Padding}">
-                        <ContentPresenter HorizontalAlignment="Center"
-                                          VerticalAlignment="Center" />
-                    </Border>
-                    <ControlTemplate.Triggers>
-                        <Trigger Property="IsMouseOver" Value="True">
-                            <Setter Property="Background" Value="{StaticResource AccentHoverBrush}" />
-                            <Setter Property="BorderBrush" Value="{StaticResource AccentHoverBrush}" />
-                        </Trigger>
-                        <Trigger Property="IsEnabled" Value="False">
-                            <Setter Property="Opacity" Value="0.5" />
-                        </Trigger>
-                    </ControlTemplate.Triggers>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
+        <Setter Property="CornerRadius" Value="10" />
+        <Setter Property="Padding" Value="16" />
+        <Setter Property="Margin" Value="0,0,0,12" />
     </Style>
 
-    <!-- Обычная кнопка: белый фон, серая рамка, ховер акцентом. -->
-    <Style x:Key="DefaultButton" TargetType="Button">
-        <Setter Property="Background" Value="{StaticResource BgPrimaryBrush}" />
-        <Setter Property="BorderBrush" Value="{StaticResource BorderLineBrush}" />
-        <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
-        <Setter Property="FontSize" Value="13" />
-        <Setter Property="FontWeight" Value="SemiBold" />
-        <Setter Property="Padding" Value="16,8" />
-        <Setter Property="Cursor" Value="Hand" />
-        <Setter Property="Template">
-            <Setter.Value>
-                <ControlTemplate TargetType="Button">
-                    <Border Background="{TemplateBinding Background}"
-                            BorderBrush="{TemplateBinding BorderBrush}"
-                            BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="6"
-                            Padding="{TemplateBinding Padding}">
-                        <ContentPresenter HorizontalAlignment="Center"
-                                          VerticalAlignment="Center" />
-                    </Border>
-                    <ControlTemplate.Triggers>
-                        <Trigger Property="IsMouseOver" Value="True">
-                            <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
-                            <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
-                        </Trigger>
-                        <Trigger Property="IsEnabled" Value="False">
-                            <Setter Property="Opacity" Value="0.5" />
-                        </Trigger>
-                    </ControlTemplate.Triggers>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
+    <!-- Заголовок секции: 15px bold (иконка — инлайн-эмодзи в разметке). -->
+    <Style x:Key="SectionTitle" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="15" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="Foreground" Value="{StaticResource FilesTxtBrush}" />
+        <Setter Property="Margin" Value="0,0,0,8" />
     </Style>
 
-    <!-- Тело редактора: подложка BgSecondary, radius 8, фокус — акцентная рамка. -->
-    <Style x:Key="EditorBody" TargetType="TextBox">
-        <Setter Property="FontSize" Value="14" />
-        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
-        <Setter Property="Background" Value="{StaticResource BgSecondaryBrush}" />
-        <Setter Property="BorderBrush" Value="Transparent" />
-        <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="Padding" Value="12" />
-        <Setter Property="Template">
-            <Setter.Value>
-                <ControlTemplate TargetType="TextBox">
-                    <Border Background="{TemplateBinding Background}"
-                            BorderBrush="{TemplateBinding BorderBrush}"
-                            BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="8"
-                            Padding="{TemplateBinding Padding}">
-                        <ScrollViewer x:Name="PART_ContentHost" />
-                    </Border>
-                    <ControlTemplate.Triggers>
-                        <Trigger Property="IsFocused" Value="True">
-                            <Setter Property="Background" Value="{StaticResource BgPrimaryBrush}" />
-                            <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
-                        </Trigger>
-                        <Trigger Property="IsEnabled" Value="False">
-                            <Setter Property="Opacity" Value="0.6" />
-                        </Trigger>
-                    </ControlTemplate.Triggers>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
-    </Style>
+    <!-- Однострочное поле ввода: тот же вид, что поиск (семантический алиас). -->
+    <Style x:Key="FilesInputField" TargetType="TextBox"
+           BasedOn="{StaticResource FilesSearchBox}" />
 
-    <!-- Заголовок редактора: крупный, без рамки, фокус — акцентное подчёркивание. -->
-    <Style x:Key="EditorTitle" TargetType="TextBox">
+    <!-- Заголовок заметки: крупный, без рамки, при фокусе — акцентное подчеркивание. -->
+    <Style x:Key="NoteTitleBox" TargetType="TextBox">
         <Setter Property="FontSize" Value="19" />
         <Setter Property="FontWeight" Value="Bold" />
-        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource FilesTxtBrush}" />
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderBrush" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0,0,0,2" />
@@ -187,7 +304,7 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsFocused" Value="True">
-                            <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                            <Setter Property="BorderBrush" Value="{StaticResource FilesAccentBrush}" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -195,45 +312,32 @@
         </Setter>
     </Style>
 
-    <!-- Заголовок секции настроек: 15px bold. -->
-    <Style x:Key="SectionTitle" TargetType="TextBlock">
-        <Setter Property="FontSize" Value="15" />
-        <Setter Property="FontWeight" Value="Bold" />
-        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
-        <Setter Property="Margin" Value="0,0,0,8" />
-    </Style>
-
-    <!-- Карточка секции: белый фон, radius 10, padding 16. -->
-    <Style x:Key="CardSection" TargetType="Border">
-        <Setter Property="Background" Value="{StaticResource BgPrimaryBrush}" />
-        <Setter Property="BorderBrush" Value="{StaticResource BorderLineBrush}" />
+    <!-- Тело заметки: подложка panel-2, radius 8, padding 12;
+         при фокусе — белая подложка и акцентная рамка. -->
+    <Style x:Key="NoteBodyBox" TargetType="TextBox">
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="Foreground" Value="{StaticResource FilesTxtBrush}" />
+        <Setter Property="Background" Value="{StaticResource FilesPanel2Brush}" />
+        <Setter Property="BorderBrush" Value="Transparent" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="10" />
-        <Setter Property="Padding" Value="16" />
-        <Setter Property="Margin" Value="0,0,0,12" />
-    </Style>
-
-    <!-- Поиск: padding 12x10, radius 6, фокус акцентом. -->
-    <Style x:Key="SearchBoxStyle" TargetType="TextBox">
-        <Setter Property="FontSize" Value="13" />
-        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
-        <Setter Property="Background" Value="{StaticResource BgPrimaryBrush}" />
-        <Setter Property="BorderBrush" Value="{StaticResource BorderLineBrush}" />
-        <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="Padding" Value="12,10" />
+        <Setter Property="Padding" Value="12" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="TextBox">
                     <Border Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="6"
+                            CornerRadius="8"
                             Padding="{TemplateBinding Padding}">
                         <ScrollViewer x:Name="PART_ContentHost" />
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsFocused" Value="True">
-                            <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                            <Setter Property="Background" Value="{StaticResource FilesPanelBrush}" />
+                            <Setter Property="BorderBrush" Value="{StaticResource FilesAccentBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.6" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -241,11 +345,56 @@
         </Setter>
     </Style>
 
-    <!-- Таб-пилюля: выбранный — акцентная заливка + белый текст. -->
-    <Style x:Key="TabStyle" TargetType="RadioButton">
+    <!-- Чекбокс: плоский бокс 18px, при checked — индиго + белая галочка. -->
+    <Style x:Key="MaterialCheckBox" TargetType="CheckBox">
+        <Setter Property="Foreground" Value="{StaticResource FilesTxtBrush}" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="CheckBox">
+                    <StackPanel Orientation="Horizontal" Background="Transparent">
+                        <Border x:Name="Box" Width="18" Height="18" CornerRadius="4"
+                                BorderBrush="{StaticResource FilesLineBrush}"
+                                BorderThickness="2"
+                                Background="{StaticResource FilesPanelBrush}"
+                                VerticalAlignment="Center">
+                            <Path x:Name="Glyph" Data="M 4 9 L 8 13 L 14 4"
+                                  Stroke="White" StrokeThickness="2" Stretch="Uniform"
+                                  Margin="3" Visibility="Collapsed" />
+                        </Border>
+                        <ContentPresenter Margin="8,0,0,0" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Box" Property="Background" Value="{StaticResource FilesAccentBrush}" />
+                            <Setter TargetName="Box" Property="BorderBrush" Value="{StaticResource FilesAccentBrush}" />
+                            <Setter TargetName="Glyph" Property="Visibility" Value="Visible" />
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Box" Property="BorderBrush" Value="{StaticResource FilesAccentBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.5" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Маленькая Danger-кнопка (напр. «Отозвать»). -->
+    <Style x:Key="FilesSmallDanger" TargetType="Button"
+           BasedOn="{StaticResource FilesBtnDanger}">
+        <Setter Property="Padding" Value="10,4" />
+        <Setter Property="FontSize" Value="12" />
+    </Style>
+
+    <!-- Таб-пилюля на RadioButton: выбранная — акцент + белый текст. -->
+    <Style x:Key="TabPill" TargetType="RadioButton">
         <Setter Property="FontSize" Value="13" />
         <Setter Property="FontWeight" Value="SemiBold" />
-        <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource FilesTxt2Brush}" />
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="Padding" Value="16,8" />
         <Setter Property="Cursor" Value="Hand" />
@@ -260,7 +409,7 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsChecked" Value="True">
-                            <Setter Property="Background" Value="{StaticResource AccentBrush}" />
+                            <Setter Property="Background" Value="{StaticResource FilesAccentBrush}" />
                             <Setter Property="Foreground" Value="White" />
                         </Trigger>
                         <MultiTrigger>
@@ -268,8 +417,53 @@
                                 <Condition Property="IsMouseOver" Value="True" />
                                 <Condition Property="IsChecked" Value="False" />
                             </MultiTrigger.Conditions>
-                            <Setter Property="Background" Value="{StaticResource BgSecondaryBrush}" />
+                            <Setter Property="Background" Value="{StaticResource FilesPanel2Brush}" />
                         </MultiTrigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- LED-индикатор статуса (цвет задается в разметке/триггерах). -->
+    <Style x:Key="StatusLed" TargetType="Ellipse">
+        <Setter Property="Width" Value="10" />
+        <Setter Property="Height" Value="10" />
+        <Setter Property="Fill" Value="{StaticResource FilesTxt3Brush}" />
+        <Setter Property="Margin" Value="0,0,8,0" />
+    </Style>
+
+    <!-- TabItem стилизован как таб: без стандартных границ, подчеркивание при выборе. -->
+    <Style TargetType="TabItem">
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{StaticResource FilesTxt2Brush}" />
+        <Setter Property="Padding" Value="16,8" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TabItem">
+                    <Border Background="{TemplateBinding Background}"
+                            CornerRadius="6"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center"
+                                          VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter Property="Background" Value="{StaticResource FilesAccentBrush}" />
+                            <Setter Property="Foreground" Value="White" />
+                        </Trigger>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsMouseOver" Value="True" />
+                                <Condition Property="IsSelected" Value="False" />
+                            </MultiTrigger.Conditions>
+                            <Setter Property="Background" Value="{StaticResource FilesPanel2Brush}" />
+                        </MultiTrigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.5" />
+                        </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
