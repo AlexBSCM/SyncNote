@@ -7,7 +7,7 @@
     android:theme="@style/Theme.SyncNote.Files"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/files_bg">
+    android:background="@color/bg_window">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -21,7 +21,15 @@
             android:layout_height="wrap_content"
             android:hint="@string/files_search_hint"
             android:inputType="text"
-            android:maxLines="1" />
+            android:maxLines="1"
+            android:background="@drawable/bg_search_field"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:paddingTop="10dp"
+            android:paddingBottom="10dp"
+            android:textColor="@color/text_primary"
+            android:textColorHint="@color/text_hint"
+            android:textSize="13sp" />
 
         <FrameLayout
             android:layout_width="match_parent"
@@ -67,6 +75,7 @@
 
                 <Button
                     android:id="@+id/emptyAddButton"
+                    style="@style/Widget.SyncNote.Button.Primary"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
@@ -84,6 +93,6 @@
         android:layout_margin="16dp"
         android:src="@android:drawable/ic_input_add"
         android:contentDescription="@string/files_add_first"
-        app:backgroundTint="@color/files_accent"
+        app:backgroundTint="@color/sync_accent"
         app:tint="@android:color/white" />
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

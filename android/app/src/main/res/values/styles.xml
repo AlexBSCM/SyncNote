@@ -46,44 +46,44 @@
         <item name="contentPadding">16dp</item>
     </style>
 
-    <!-- ===== Кнопки ===== -->
+    <!-- ===== Кнопки =====
+         Важно: основная тема приложения — AppCompat, а не MaterialComponents.
+         MDC-стили (parent="Widget.MaterialComponents.*") под ней не работают:
+         backgroundTint/strokeColor/cornerRadius игнорируются, а фон кнопки
+         «Добавить» вообще не отображался. Поэтому кнопки описаны только
+         через android:* атрибуты и наши shape-drawable — AppCompat-безопасно. -->
     <!-- Primary: заливка акцентом, белый текст, radius 6dp. -->
-    <style name="Widget.SyncNote.Button.Primary"
-        parent="Widget.MaterialComponents.Button">
-        <item name="backgroundTint">@color/sync_accent</item>
+    <style name="Widget.SyncNote.Button.Primary" parent="">
+        <item name="android:background">@drawable/bg_button_primary_selector</item>
         <item name="android:textColor">@color/text_on_accent</item>
         <item name="android:textSize">13sp</item>
         <item name="android:textStyle">bold</item>
-        <item name="cornerRadius">6dp</item>
-        <item name="rippleColor">@color/sync_accent_dark</item>
-        <item name="elevation">0dp</item>
         <item name="android:stateListAnimator">@null</item>
+        <item name="android:minHeight">44dp</item>
+        <item name="android:paddingStart">16dp</item>
+        <item name="android:paddingEnd">16dp</item>
     </style>
 
     <!-- Обычная кнопка: белая заливка, серая рамка, radius 6dp. -->
-    <style name="Widget.SyncNote.Button.Default"
-        parent="Widget.MaterialComponents.Button.OutlinedButton">
-        <item name="backgroundTint">@color/bg_card</item>
+    <style name="Widget.SyncNote.Button.Default" parent="">
+        <item name="android:background">@drawable/bg_button_default_selector</item>
         <item name="android:textColor">@color/text_primary</item>
         <item name="android:textSize">13sp</item>
-        <item name="strokeColor">@color/border_line</item>
-        <item name="strokeWidth">1dp</item>
-        <item name="cornerRadius">6dp</item>
-        <item name="rippleColor">@color/sync_accent_soft</item>
-        <item name="elevation">0dp</item>
         <item name="android:stateListAnimator">@null</item>
+        <item name="android:minHeight">44dp</item>
+        <item name="android:paddingStart">16dp</item>
+        <item name="android:paddingEnd">16dp</item>
     </style>
 
     <!-- Danger-кнопка: прозрачная, красный текст. -->
-    <style name="Widget.SyncNote.Button.Danger"
-        parent="Widget.MaterialComponents.Button.TextButton">
-        <item name="backgroundTint">@android:color/transparent</item>
+    <style name="Widget.SyncNote.Button.Danger" parent="">
+        <item name="android:background">@drawable/bg_button_danger</item>
         <item name="android:textColor">@color/status_err_fg</item>
         <item name="android:textSize">13sp</item>
-        <item name="cornerRadius">6dp</item>
-        <item name="rippleColor">@color/status_err_bg</item>
-        <item name="elevation">0dp</item>
         <item name="android:stateListAnimator">@null</item>
+        <item name="android:minHeight">44dp</item>
+        <item name="android:paddingStart">16dp</item>
+        <item name="android:paddingEnd">16dp</item>
     </style>
 
     <!-- Компактная Danger-кнопка (аналог FilesSmallDanger). -->

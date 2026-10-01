@@ -9,7 +9,18 @@
         android:id="@+id/searchBox"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="Поиск" />
+        android:hint="Поиск"
+        android:background="@drawable/bg_search_field"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:paddingTop="10dp"
+        android:paddingBottom="10dp"
+        android:textColor="@color/text_primary"
+        android:textColorHint="@color/text_hint"
+        android:textSize="13sp"
+        android:maxLines="1"
+        android:singleLine="true"
+        android:inputType="text" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/notesList"
@@ -29,20 +40,27 @@
             android:layout_width="0dp"
             android:layout_weight="1"
             android:layout_height="wrap_content"
-            android:text="Выбрать все" />
+            android:text="Выбрать все"
+            android:textColor="@color/text_primary"
+            android:textSize="13sp" />
 
+        <!-- На Desktop здесь FilesBtnDefault (не Danger) — держим паритет. -->
         <Button
             android:id="@+id/deleteCheckedButton"
+            style="@style/Widget.SyncNote.Button.Default"
             android:layout_width="0dp"
             android:layout_weight="1"
             android:layout_height="wrap_content"
-            android:text="Удалить выбранные" />
+            android:text="Удалить выбранные"
+            android:textAllCaps="false" />
     </LinearLayout>
 
     <Button
         android:id="@+id/addButton"
+        style="@style/Widget.SyncNote.Button.Primary"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:text="Добавить" />
+        android:text="Добавить"
+        android:textAllCaps="false" />
 </LinearLayout>

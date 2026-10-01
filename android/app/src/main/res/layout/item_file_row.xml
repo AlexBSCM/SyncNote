@@ -6,7 +6,9 @@
     android:layout_height="wrap_content"
     android:orientation="horizontal"
     android:gravity="center_vertical"
-    android:padding="10dp">
+    android:background="@drawable/bg_item_card"
+    android:padding="16dp"
+    android:layout_marginBottom="8dp">
 
     <TextView
         android:id="@+id/fileIcon"
@@ -28,9 +30,8 @@
             android:id="@+id/fileName"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textStyle="bold"
-            android:textSize="16sp"
-            android:textColor="@color/files_text"
+            android:textAppearance="@style/TextAppearance.SyncNote.Title"
+            android:textColor="@color/text_primary"
             android:maxLines="1"
             android:ellipsize="end" />
 
@@ -39,8 +40,8 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="2dp"
-            android:textSize="12sp"
-            android:textColor="@color/files_text3"
+            android:textAppearance="@style/TextAppearance.SyncNote.Caption"
+            android:textColor="@color/text_hint"
             android:maxLines="1"
             android:ellipsize="end" />
     </LinearLayout>

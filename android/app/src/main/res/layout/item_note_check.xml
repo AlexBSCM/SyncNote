@@ -3,26 +3,31 @@
     android:orientation="horizontal"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:padding="6dp">
+    android:background="@drawable/bg_item_card"
+    android:padding="16dp"
+    android:layout_marginBottom="8dp"
+    android:gravity="center_vertical">
 
     <CheckBox
         android:id="@+id/rowCheck"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="center_vertical" />
+        android:layout_gravity="center_vertical"
+        android:buttonTint="@color/sync_accent" />
 
     <LinearLayout
         android:orientation="vertical"
         android:layout_width="0dp"
         android:layout_weight="1"
         android:layout_height="wrap_content"
-        android:layout_marginStart="6dp">
+        android:layout_marginStart="12dp">
 
         <TextView
             android:id="@+id/itemTitle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textStyle="bold"
+            android:textAppearance="@style/TextAppearance.SyncNote.Title"
+            android:textColor="@color/text_primary"
             android:maxLines="1"
             android:ellipsize="end" />
 
@@ -30,7 +35,10 @@
             android:id="@+id/itemDate"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textSize="12sp"
-            android:alpha="0.6" />
+            android:layout_marginTop="2dp"
+            android:textAppearance="@style/TextAppearance.SyncNote.Caption"
+            android:textColor="@color/text_hint"
+            android:maxLines="1"
+            android:ellipsize="end" />
     </LinearLayout>
 </LinearLayout>
