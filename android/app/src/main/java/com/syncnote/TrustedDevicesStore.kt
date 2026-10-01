@@ -57,7 +57,8 @@ object TrustedDevicesStore {
                     host = host,
                     port = o.optInt("port"),
                     name = o.optString("name").ifBlank { host },
-                    lastUsed = o.optLong("lastUsed"))
+                    lastUsed = o.optLong("lastUsed"),
+                    token = o.optString("token").takeIf { it.isNotBlank() })
             }.sortedByDescending { it.lastUsed }
         } catch (e: Exception) {
             // Fail-safe UX: при любой ошибке считаем, что устройств нет,
@@ -76,6 +77,7 @@ object TrustedDevicesStore {
                 put("port", d.port)
                 put("name", d.name)
                 put("lastUsed", d.lastUsed)
+                d.token?.let { put("token", it) }
             })
         }
         prefs(ctx).edit().putString(KEY_DEVICES, arr.toString()).apply()
@@ -93,6 +95,17 @@ object TrustedDevicesStore {
         val i = list.indexOfFirst { it.id == id }
         if (i >= 0) {
             list[i] = list[i].copy(lastUsed = System.currentTimeMillis())
+            save(ctx, list)
+        }
+    }
+
+    // Токен одноразовый: после первого успешного сопряжения он не нужен
+    // и не должен храниться дальше.
+    fun clearToken(ctx: Context, id: String) {
+        val list = getAll(ctx).toMutableList()
+        val i = list.indexOfFirst { it.id == id }
+        if (i >= 0 && list[i].token != null) {
+            list[i] = list[i].copy(token = null)
             save(ctx, list)
         }
     }

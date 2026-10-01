@@ -35,16 +35,22 @@ class AppStartActivity : AppCompatActivity() {
         val d = res.data ?: return@registerForActivityResult
         val host = d.getStringExtra(QrScanActivity.EXTRA_HOST).orEmpty()
         val port = d.getIntExtra(QrScanActivity.EXTRA_PORT, 0)
+        // Токен обязателен: без него сервер отклоняет первое сопряжение
+        // («нет доверия: нужен токен»). Раньше он молча терялся.
+        val token = d.getStringExtra(QrScanActivity.EXTRA_TOKEN)
         if (host.isBlank() || port <= 0) {
             toast("QR не содержит адреса узла."); return@registerForActivityResult
+        }
+        if (token.isNullOrBlank()) {
+            snack("В QR нет токена — сервер не признает устройство доверенным.")
         }
         // Регистрируем и сразу проверяем живым подключением: успех уводит
         // в MainActivity и помечает устройство как рабочее, ошибка оставляет
         // его в списке на этом экране.
-        vm.addDevice(host, port)
+        vm.addDevice(host, port, token = token)
         connect(TrustedDevice(
             id = TrustedDevice.idFor(host, port), host = host, port = port,
-            name = host, lastUsed = 0L))
+            name = host, lastUsed = 0L, token = token))
     }
 
     private val syncLauncher = registerForActivityResult(

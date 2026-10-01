@@ -59,8 +59,10 @@ class SyncHomeViewModel(app: Application) : AndroidViewModel(app) {
             try {
                 val repo = NotesRepository(ctx)
                 // Реальный API SyncSession: конструктор + run(store) на один хост.
+                // token обязателен для первого сопряжения: без него сервер
+                // отвечает «нет доверия: нужен токен».
                 val session = SyncSession(
-                    device.host, device.port, repo.deviceId(), Build.MODEL, null)
+                    device.host, device.port, repo.deviceId(), Build.MODEL, device.token)
                 result = session.run(repo, null)
             } catch (e: Exception) {
                 error = e.message ?: e.javaClass.simpleName
@@ -71,6 +73,8 @@ class SyncHomeViewModel(app: Application) : AndroidViewModel(app) {
                 val r = result
                 if (r != null) {
                     TrustedDevicesStore.touch(ctx, id)
+                    // Токен израсходован — дальше устройство доверенное.
+                    TrustedDevicesStore.clearToken(ctx, id)
                     // Поддерживаем автосинх SyncAuto в согласованном состоянии.
                     SyncAuto.saveProfile(ctx, device.host, device.port,
                         TrustedDevicesStore.getAll(ctx).map { it.host })
@@ -86,7 +90,7 @@ class SyncHomeViewModel(app: Application) : AndroidViewModel(app) {
     // Регистрация нового устройства после сканирования QR.
     // lastUsed = 0: «известно, но не проверено». Успешный connectAndSync
     // проставит его через touch(), и только тогда запуск пойдёт сразу в Main.
-    fun addDevice(host: String, port: Int, name: String? = null) {
+    fun addDevice(host: String, port: Int, name: String? = null, token: String? = null) {
         val id = TrustedDevice.idFor(host, port)
         val existing = TrustedDevicesStore.getAll(ctx).firstOrNull { it.id == id }
         TrustedDevicesStore.addOrUpdate(ctx, TrustedDevice(
@@ -94,7 +98,8 @@ class SyncHomeViewModel(app: Application) : AndroidViewModel(app) {
             host = host,
             port = port,
             name = name?.takeIf { it.isNotBlank() } ?: existing?.name ?: host,
-            lastUsed = 0L))
+            lastUsed = 0L,
+            token = token?.takeIf { it.isNotBlank() } ?: existing?.token))
         SyncAuto.saveProfile(ctx, host, port, TrustedDevicesStore.getAll(ctx).map { it.host })
         load()
     }
