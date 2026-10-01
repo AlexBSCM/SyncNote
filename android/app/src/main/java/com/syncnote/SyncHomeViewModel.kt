@@ -2,6 +2,7 @@ package com.syncnote
 
 import android.app.Application
 import android.os.Build
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
@@ -11,6 +12,10 @@ import java.util.concurrent.atomic.AtomicBoolean
 // Заметок/файлов/конфликтов не касается: только список доверенных ПК,
 // подключение к выбранному и переименование.
 class SyncHomeViewModel(app: Application) : AndroidViewModel(app) {
+
+    companion object {
+        private const val TAG = "SyncHomeVM"
+    }
 
     private val ctx = app.applicationContext
 
@@ -67,7 +72,20 @@ class SyncHomeViewModel(app: Application) : AndroidViewModel(app) {
                 // java.io.tmpdir, который на Android равен /data/local/tmp —
                 // недоступную приложению папку. Тогда приём файлов падает с
                 // FileNotFoundException. SyncActivity здесь передаёт cacheDir.
-                result = session.run(repo, ctx.cacheDir)
+                try {
+                    result = session.run(repo, ctx.cacheDir)
+                } catch (rejected: HelloRejectedException) {
+                    // Токен одноразовый. Если предыдущая сессия успешно
+                    // прошла hello, а потом оборвалась, токен уже израсходован
+                    // и сервер отвергнет его повторно — хотя устройство давно
+                    // доверенное. Повторяем без токена: сервер проверит
+                    // IsTrusted(deviceId) и пропустит.
+                    if (device.token == null) throw rejected
+                    Log.i(TAG, "token rejected, retrying as trusted device")
+                    val retry = SyncSession(
+                        device.host, device.port, repo.deviceId(), Build.MODEL, null)
+                    result = retry.run(repo, ctx.cacheDir)
+                }
             } catch (e: Exception) {
                 error = e.message ?: e.javaClass.simpleName
             }
