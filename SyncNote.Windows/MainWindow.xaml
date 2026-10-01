@@ -25,6 +25,7 @@
                                Foreground="{StaticResource FilesTxt3Brush}" FontSize="11"
                                Margin="0,0,8,0" />
                     <Button x:Name="ConflictsButton" Content="Конфликты (0)" Padding="8,0"
+                            Style="{StaticResource FilesBtnDefault}"
                             Visibility="Collapsed" Click="ConflictsButton_Click" />
                 </StackPanel>
             </StatusBarItem>
@@ -54,6 +55,7 @@
                                 <StackPanel Orientation="Horizontal">
                                     <Button x:Name="AddButton" Content="Добавить"
                                             Style="{StaticResource FilesBtnPrimary}"
+                                            Padding="16,8" MinHeight="32"
                                             Click="AddButton_Click" />
                                     <Button x:Name="DeleteButton" Content="Удалить" Margin="8,0,0,0"
                                             Style="{StaticResource FilesBtnDanger}"
@@ -175,10 +177,22 @@
                     </Border>
 
                     <DockPanel Grid.Column="1" Background="{StaticResource FilesPanelBrush}">
-                        <TextBlock x:Name="EmptyHint" Text="Выберите заметку в списке или нажмите «Добавить»."
-                                   VerticalAlignment="Center" HorizontalAlignment="Center"
-                                   Foreground="{StaticResource FilesTxt2Brush}" FontSize="13"
-                                   TextWrapping="Wrap" TextAlignment="Center" />
+                    <Grid x:Name="EmptyHint" VerticalAlignment="Center" HorizontalAlignment="Center">
+                        <StackPanel Orientation="Vertical" HorizontalAlignment="Center" MaxWidth="300">
+                            <TextBlock Text="📝" FontSize="48" Opacity="0.2" Margin="0,0,0,12"
+                                       HorizontalAlignment="Center"/>
+                            <TextBlock Text="Нет выбранной записи"
+                                       Style="{StaticResource SectionTitle}"
+                                       Foreground="{StaticResource FilesTxt2Brush}"
+                                       TextAlignment="Center"
+                                       Margin="0,0,0,4"/>
+                            <TextBlock Text="Выберите элемент в списке слева или нажмите «Добавить», чтобы создать новый."
+                                       FontSize="12"
+                                       Foreground="{StaticResource FilesTxt3Brush}"
+                                       TextWrapping="Wrap"
+                                       TextAlignment="Center"/>
+                        </StackPanel>
+                    </Grid>
                         <Border DockPanel.Dock="Bottom" Background="{StaticResource FilesPanel2Brush}"
                                 BorderBrush="{StaticResource FilesLineSoftBrush}"
                                 BorderThickness="0,1,0,0" Padding="16,12"
@@ -339,6 +353,8 @@
                                          Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}" />
                                 <Button Content="＋ Добавить" Margin="8,0,0,0"
                                         Style="{StaticResource FilesBtnPrimary}"
+                                        Padding="16,8" MinHeight="32"
+                                        VerticalAlignment="Center"
                                         Command="{Binding AddCommand}" />
                             </StackPanel>
                         </Border>
