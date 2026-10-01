@@ -63,7 +63,11 @@ class SyncHomeViewModel(app: Application) : AndroidViewModel(app) {
                 // отвечает «нет доверия: нужен токен».
                 val session = SyncSession(
                     device.host, device.port, repo.deviceId(), Build.MODEL, device.token)
-                result = session.run(repo, null)
+                // cacheDir обязателен: при null SyncSession берёт
+                // java.io.tmpdir, который на Android равен /data/local/tmp —
+                // недоступную приложению папку. Тогда приём файлов падает с
+                // FileNotFoundException. SyncActivity здесь передаёт cacheDir.
+                result = session.run(repo, ctx.cacheDir)
             } catch (e: Exception) {
                 error = e.message ?: e.javaClass.simpleName
             }
