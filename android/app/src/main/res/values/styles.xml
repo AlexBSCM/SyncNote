@@ -30,6 +30,16 @@
         <item name="android:textSize">12sp</item>
     </style>
 
+    <!-- Заголовок секции/группы: 13sp bold (аналог Desktop SectionTitle).
+         Используется как android:textAppearance на серых подписях
+         «Заголовок», «Текст», «Чек-лист», «Вложения», «Хранилище». -->
+    <style name="TextAppearance.SyncNote.SectionTitle"
+        parent="TextAppearance.MaterialComponents.Subtitle2">
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textSize">13sp</item>
+    </style>
+
     <!-- ===== Карточки ===== -->
     <!-- Плоская карточка: белый фон, radius 8dp, рамка вместо тени. -->
     <style name="Widget.SyncNote.Card" parent="Widget.MaterialComponents.CardView">

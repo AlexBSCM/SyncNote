@@ -9,72 +9,110 @@
         android:layout_height="wrap_content"
         android:padding="12dp">
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Хранилище"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/storageInfo"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="Узел синхронизации"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/nodeInfo"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp" />
-
-        <Button
-            android:id="@+id/forgetButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="Забыть узел" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="Синхронизация и конфликты"
-            android:textStyle="bold" />
-
+        <!-- Секция «Хранилище»: белая карточка с рамкой. -->
         <LinearLayout
-            android:orientation="horizontal"
+            android:orientation="vertical"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp">
+            android:background="@drawable/bg_item_card"
+            android:padding="16dp"
+            android:layout_marginBottom="12dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Хранилище"
+                android:textAppearance="@style/TextAppearance.SyncNote.SectionTitle" />
+
+            <TextView
+                android:id="@+id/storageInfo"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textAppearance="@style/TextAppearance.SyncNote.Body"
+                android:textColor="@color/text_secondary" />
+        </LinearLayout>
+
+        <!-- Секция «Узел синхронизации». -->
+        <LinearLayout
+            android:orientation="vertical"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_item_card"
+            android:padding="16dp"
+            android:layout_marginBottom="12dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Узел синхронизации"
+                android:textAppearance="@style/TextAppearance.SyncNote.SectionTitle" />
+
+            <TextView
+                android:id="@+id/nodeInfo"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textAppearance="@style/TextAppearance.SyncNote.Body"
+                android:textColor="@color/text_secondary" />
 
             <Button
-                android:id="@+id/openSyncButton"
-                android:layout_width="0dp"
-                android:layout_weight="1"
+                android:id="@+id/forgetButton"
+                style="@style/Widget.SyncNote.Button.Danger"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Синхронизация" />
+                android:layout_marginTop="8dp"
+                android:text="Забыть узел"
+                android:textAllCaps="false" />
+        </LinearLayout>
 
-            <Button
-                android:id="@+id/openConflictsButton"
-                android:layout_width="0dp"
-                android:layout_weight="1"
+        <!-- Секция «Синхронизация и конфликты». -->
+        <LinearLayout
+            android:orientation="vertical"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_item_card"
+            android:padding="16dp"
+            android:layout_marginBottom="12dp">
+
+            <TextView
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:text="Конфликты" />
+                android:text="Синхронизация и конфликты"
+                android:textAppearance="@style/TextAppearance.SyncNote.SectionTitle" />
+
+            <LinearLayout
+                android:orientation="horizontal"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp">
+
+                <Button
+                    android:id="@+id/openSyncButton"
+                    style="@style/Widget.SyncNote.Button.Primary"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:text="Синхронизация"
+                    android:textAllCaps="false" />
+
+                <Button
+                    android:id="@+id/openConflictsButton"
+                    style="@style/Widget.SyncNote.Button.Default"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="Конфликты"
+                    android:textAllCaps="false" />
+            </LinearLayout>
         </LinearLayout>
 
         <TextView
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
             android:text="Управление заметками — во вкладке «Заметки» (галочки, «Выбрать все»)."
-            android:alpha="0.6" />
+            android:textAppearance="@style/TextAppearance.SyncNote.Caption"
+            android:textColor="@color/text_hint" />
     </LinearLayout>
 </ScrollView>

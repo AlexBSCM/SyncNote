@@ -4,7 +4,7 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="@color/files_bg">
+    android:background="@color/bg_window">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -38,17 +38,20 @@
                     android:id="@+id/detailName"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:textStyle="bold"
-                    android:textSize="20sp"
-                    android:textColor="@color/files_text" />
+                    android:textAppearance="@style/TextAppearance.SyncNote.Title"
+                    android:textColor="@color/text_primary"
+                    android:textSize="18sp"
+                    android:maxLines="2"
+                    android:ellipsize="middle" />
 
                 <TextView
                     android:id="@+id/detailSub"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
-                    android:textSize="13sp"
-                    android:textColor="@color/files_text2" />
+                    android:textAppearance="@style/TextAppearance.SyncNote.Body"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="13sp" />
             </LinearLayout>
         </LinearLayout>
 
@@ -73,8 +76,9 @@
                 android:layout_height="wrap_content"
                 android:layout_gravity="center"
                 android:text="@string/files_preview_unavailable"
-                android:textSize="14sp"
-                android:textColor="@color/files_text3" />
+                android:textAppearance="@style/TextAppearance.SyncNote.Body"
+                android:textColor="@color/text_hint"
+                android:textSize="14sp" />
         </FrameLayout>
 
         <TextView
@@ -84,16 +88,18 @@
             android:gravity="center_vertical"
             android:textSize="13sp"
             android:textStyle="bold"
-            android:textColor="@color/files_text2" />
+            android:textColor="@color/text_secondary" />
 
         <TextView
             android:id="@+id/infoBody"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:paddingBottom="8dp"
+            android:background="@drawable/bg_item_card"
+            android:padding="12dp"
             android:fontFamily="monospace"
             android:textSize="12sp"
-            android:textColor="@color/files_text2"
+            android:textColor="@color/text_secondary"
             android:visibility="gone" />
 
         <LinearLayout
@@ -102,32 +108,52 @@
             android:layout_marginTop="8dp"
             android:orientation="horizontal">
 
+            <!-- Три кнопки в ряд: уменьшаем горизонтальные отступы,
+                 иначе «Сохранить как...» переносится на две строки. -->
             <Button
                 android:id="@+id/btnOpen"
+                style="@style/Widget.SyncNote.Button.Default"
                 android:layout_width="0dp"
                 android:layout_weight="1"
                 android:layout_height="wrap_content"
+                android:minWidth="0dp"
+                android:minHeight="0dp"
+                android:paddingStart="6dp"
+                android:paddingEnd="6dp"
+                android:maxLines="1"
+                android:ellipsize="end"
                 android:text="@string/files_open"
                 android:textAllCaps="false" />
 
             <Button
                 android:id="@+id/btnSaveAs"
+                style="@style/Widget.SyncNote.Button.Default"
                 android:layout_width="0dp"
                 android:layout_weight="1"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
+                android:minWidth="0dp"
+                android:minHeight="0dp"
+                android:paddingStart="6dp"
+                android:paddingEnd="6dp"
+                android:maxLines="1"
+                android:ellipsize="end"
                 android:text="@string/files_save_as"
                 android:textAllCaps="false" />
 
             <Button
                 android:id="@+id/btnDelete"
+                style="@style/Widget.SyncNote.Button.Danger"
                 android:layout_width="0dp"
                 android:layout_weight="1"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
+                android:minWidth="0dp"
+                android:minHeight="0dp"
+                android:paddingStart="6dp"
+                android:paddingEnd="6dp"
+                android:maxLines="1"
+                android:ellipsize="end"
                 android:text="@string/files_delete"
-                android:textAllCaps="false"
-                android:textColor="@color/files_err" />
+                android:textAllCaps="false" />
         </LinearLayout>
     </LinearLayout>
 </androidx.core.widget.NestedScrollView>

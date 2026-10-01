@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Поле тела заметки: подложка bg_surface, radius 8dp, рамка border_line;
+     при фокусе — белая подложка и акцентная рамка.
+     Зеркало десктопного NoteBodyBox. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_focused="true">
+        <shape android:shape="rectangle">
+            <solid android:color="@color/bg_card" />
+            <stroke
+                android:width="1dp"
+                android:color="@color/sync_accent" />
+            <corners android:radius="8dp" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@color/bg_surface" />
+            <stroke
+                android:width="1dp"
+                android:color="@color/border_line" />
+            <corners android:radius="8dp" />
+        </shape>
+    </item>
+</selector>

@@ -13,13 +13,18 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Заголовок" />
+            android:text="Заголовок"
+            android:textAppearance="@style/TextAppearance.SyncNote.SectionTitle" />
 
         <EditText
             android:id="@+id/titleBox"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Заголовок" />
+            android:hint="Заголовок"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="@color/text_primary"
+            android:textColorHint="@color/text_hint" />
 
         <LinearLayout
             android:orientation="horizontal"
@@ -30,24 +35,29 @@
 
             <Button
                 android:id="@+id/saveButton"
+                style="@style/Widget.SyncNote.Button.Primary"
                 android:layout_width="0dp"
                 android:layout_weight="1"
                 android:layout_height="wrap_content"
-                android:text="Сохранить" />
+                android:text="Сохранить"
+                android:textAllCaps="false" />
 
             <Button
                 android:id="@+id/deleteButton"
+                style="@style/Widget.SyncNote.Button.Danger"
                 android:layout_width="0dp"
                 android:layout_weight="1"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
-                android:text="Удалить" />
+                android:text="Удалить"
+                android:textAllCaps="false" />
         </LinearLayout>
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Текст" />
+            android:text="Текст"
+            android:textAppearance="@style/TextAppearance.SyncNote.SectionTitle" />
 
         <EditText
             android:id="@+id/bodyBox"
@@ -55,13 +65,19 @@
             android:layout_height="200dp"
             android:gravity="top"
             android:hint="Текст заметки"
-            android:inputType="textMultiLine" />
+            android:inputType="textMultiLine"
+            android:background="@drawable/bg_body_field"
+            android:padding="16dp"
+            android:textColor="@color/text_primary"
+            android:textColorHint="@color/text_hint"
+            android:textSize="14sp" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="Чек-лист" />
+            android:text="Чек-лист"
+            android:textAppearance="@style/TextAppearance.SyncNote.SectionTitle" />
 
         <LinearLayout
             android:id="@+id/checklistBox"
@@ -80,12 +96,26 @@
                 android:layout_width="0dp"
                 android:layout_weight="1"
                 android:layout_height="wrap_content"
-                android:hint="Новый пункт" />
+                android:hint="Новый пункт"
+                android:background="@drawable/bg_search_field"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:paddingTop="10dp"
+                android:paddingBottom="10dp"
+                android:textColor="@color/text_primary"
+                android:textColorHint="@color/text_hint"
+                android:textSize="13sp"
+                android:maxLines="1"
+                android:singleLine="true"
+                android:inputType="text" />
 
             <Button
                 android:id="@+id/addItemButton"
+                style="@style/Widget.SyncNote.Button.Default"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:minWidth="0dp"
                 android:text="+" />
         </LinearLayout>
 
@@ -93,7 +123,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="Вложения" />
+            android:text="Вложения"
+            android:textAppearance="@style/TextAppearance.SyncNote.SectionTitle" />
 
         <LinearLayout
             android:id="@+id/attachmentsBox"
@@ -103,9 +134,11 @@
 
         <Button
             android:id="@+id/addFileButton"
+            style="@style/Widget.SyncNote.Button.Default"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:text="Добавить файл" />
+            android:text="Добавить файл"
+            android:textAllCaps="false" />
     </LinearLayout>
 </ScrollView>
