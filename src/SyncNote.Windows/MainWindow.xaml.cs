@@ -46,7 +46,8 @@ public partial class MainWindow : Window
         _sync = new SqlSyncStateStore(_dbPath);
 
         _vm = new MainViewModel(_notes, _files, _sync,
-            new SqliteAttachmentRepo(_dbPath, _deviceId), _fileIo, this);
+            new SqliteAttachmentRepo(_dbPath, _deviceId), _fileIo,
+            new KeyValueStore(_dbPath), _dbPath, this);
         _vm.ShowPairing += () => ShowPairingWindow();
         DataContext = _vm;
 
@@ -64,7 +65,13 @@ public partial class MainWindow : Window
         var pw = new Views.PairingWindow(_dbPath, Environment.MachineName);
         pw.Owner = this;
         pw.ShowDialog();
-        // После закрытия окна сопряжения обновляем списки (могли прилететь новые)
+        // После закрытия окна сопряжения обновляем списки (могли прилететь новые).
+        // При успехе фиксируем время синка и доверенное устройство.
+        if (pw.DataContext is ViewModels.PairingViewModel pvm
+            && pvm.IsDone && !pvm.HasError)
+        {
+            _vm.RecordSyncSuccess(pvm.HostIp, pvm.Port);
+        }
         _vm.RefreshAll();
     }
 
@@ -93,13 +100,20 @@ public sealed class MainViewModel : IDisposable, INotifyPropertyChanged
     private readonly ISyncStateStore _sync;
     private readonly SqliteAttachmentRepo _attachments;
     private readonly IFileIo _fileIo;
+    private readonly KeyValueStore _kv;
+    private readonly string _dbPath;
     private readonly Window _owner;
     private readonly List<SelectableNote> _allNotes = new();
     private readonly List<FileEntryViewModel> _allFiles = new();
+    private readonly ObservableCollection<ViewModels.TrustedDevice> _trustedDevices = new();
     private string _searchQuery = "";
     private SelectableNote? _selectedNote;
     private FileEntryViewModel? _selectedFile;
     private bool _showNotes = true;
+    private bool _showSettings;
+    private int _conflictCount;
+    private int _unsyncedCount;
+    private string _lastSyncText = "ещё не было";
 
     public event PropertyChangedEventHandler? PropertyChanged;
     private void OnProp([CallerMemberName] string? n = null) => PropertyChanged?.Invoke(this, new(n));
@@ -118,42 +132,52 @@ public sealed class MainViewModel : IDisposable, INotifyPropertyChanged
     public ICommand OpenSettingsCommand { get; }
     public ICommand ShowPairingCommand { get; }
     public ICommand ExitCommand { get; }
+    public ICommand RevokeDeviceCommand { get; }
+    public ICommand OpenDataFolderCommand { get; }
+    public ICommand RefreshStatusCommand { get; }
 
     public IReadOnlyList<SelectableNote> Notes => _allNotes;
     public IReadOnlyList<FileEntryViewModel> Files => _allFiles;
 
+    private void SetTab(bool notes, bool settings)
+    {
+        _showNotes = notes;
+        _showSettings = settings;
+        OnProp(nameof(ShowNotes));
+        OnProp(nameof(ShowFiles));
+        OnProp(nameof(ShowSettings));
+        OnProp(nameof(NotesVisible));
+        OnProp(nameof(FilesVisible));
+        OnProp(nameof(SettingsVisible));
+        OnProp(nameof(HasItems));
+        if (settings) LoadSettings();
+        CommandManager.InvalidateRequerySuggested();
+    }
+
     public bool ShowNotes
     {
-        get => _showNotes;
-        set
-        {
-            if (_showNotes == value) return;
-            _showNotes = value;
-            OnProp();
-            OnProp(nameof(ShowFiles));
-            OnProp(nameof(NotesVisible));
-            OnProp(nameof(FilesVisible));
-            OnProp(nameof(HasItems));
-        }
+        get => _showNotes && !_showSettings;
+        set { if (value) SetTab(notes: true, settings: false); }
     }
 
     public bool ShowFiles
     {
-        get => !_showNotes;
-        set
-        {
-            if (!_showNotes == value) return;
-            _showNotes = !value;
-            OnProp();
-            OnProp(nameof(ShowNotes));
-            OnProp(nameof(NotesVisible));
-            OnProp(nameof(FilesVisible));
-            OnProp(nameof(HasItems));
-        }
+        get => !_showNotes && !_showSettings;
+        set { if (value) SetTab(notes: false, settings: false); }
     }
 
-    public Visibility NotesVisible => _showNotes ? Visibility.Visible : Visibility.Collapsed;
-    public Visibility FilesVisible => _showNotes ? Visibility.Collapsed : Visibility.Visible;
+    public bool ShowSettings
+    {
+        get => _showSettings;
+        set { if (value) SetTab(notes: true, settings: true); }
+    }
+
+    public Visibility NotesVisible =>
+        ShowNotes ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility FilesVisible =>
+        ShowFiles ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility SettingsVisible =>
+        _showSettings ? Visibility.Visible : Visibility.Collapsed;
 
     public bool HasItems => _showNotes
         ? _allNotes.Any(n => n.IsVisible)
@@ -189,13 +213,16 @@ public sealed class MainViewModel : IDisposable, INotifyPropertyChanged
     }
 
     public MainViewModel(INoteRepo notes, IFileRepo files, ISyncStateStore sync,
-        SqliteAttachmentRepo attachments, IFileIo fileIo, Window owner)
+        SqliteAttachmentRepo attachments, IFileIo fileIo, KeyValueStore kv,
+        string dbPath, Window owner)
     {
         _notes = notes;
         _files = files;
         _sync = sync;
         _attachments = attachments;
         _fileIo = fileIo;
+        _kv = kv;
+        _dbPath = dbPath;
         _owner = owner;
 
         AddNoteCommand = new RelayCommand(_ => AddNote());
@@ -207,9 +234,12 @@ public sealed class MainViewModel : IDisposable, INotifyPropertyChanged
         FormatListCommand = new RelayCommand(_ => AppendChecklistItem(), _ => HasSelection);
         AttachFileCommand = new RelayCommand(_ => AttachFile(), _ => HasSelection);
         SetPreviewCommand = new RelayCommand(p => SetPreview(p), _ => HasSelection);
-        OpenSettingsCommand = new RelayCommand(_ => { /* TODO: Settings window */ });
+        OpenSettingsCommand = new RelayCommand(_ => SetTab(notes: true, settings: true));
         ShowPairingCommand = new RelayCommand(_ => ShowPairing?.Invoke());
         ExitCommand = new RelayCommand(_ => Application.Current.Shutdown());
+        RevokeDeviceCommand = new RelayCommand(p => RevokeDevice(p as ViewModels.TrustedDevice));
+        OpenDataFolderCommand = new RelayCommand(_ => OpenDataFolder());
+        RefreshStatusCommand = new RelayCommand(_ => { RefreshAll(); LoadSettings(); });
 
         RefreshAll();
     }
@@ -287,14 +317,161 @@ public sealed class MainViewModel : IDisposable, INotifyPropertyChanged
         }
         SelectedNote = _allNotes.FirstOrDefault(n => n.Note.Id == noteId);
         SelectedFile = _allFiles.FirstOrDefault(f => f.Id == fileId);
+        _conflictCount = _allNotes.Count(n => n.Note.IsConflict)
+            + _allFiles.Count(f => f.IsConflict);
+        _unsyncedCount = _allNotes.Count(n => n.Note.IsModified)
+            + _allFiles.Count(f => f.IsModified);
         OnProp(nameof(Notes));
         OnProp(nameof(Files));
         OnProp(nameof(HasItems));
+        UpdateSyncStatus();
+        if (_showSettings) LoadSettings();
     }
 
     public void RefreshNotes() => RefreshAll();
 
     public void Dispose() { }
+
+    // --- Настройки и статус синхронизации ---
+
+    public ObservableCollection<ViewModels.TrustedDevice> TrustedDevices => _trustedDevices;
+
+    public string ConnectionStatusText { get; private set; } = "Не подключено";
+    public System.Windows.Media.Brush SyncLedBrush { get; private set; }
+        = System.Windows.Media.Brushes.Gray;
+    public string StatsText { get; private set; } = "";
+    public string LastSyncText => $"Последняя синхр.: {_lastSyncText}";
+    public string AppVersionText { get; } =
+        "SyncNote v2 " + (System.Reflection.Assembly.GetExecutingAssembly()
+            .GetName().Version?.ToString(3) ?? "");
+
+    private static System.Windows.Media.Brush ThemeBrush(string key)
+    {
+        try
+        {
+            if (Application.Current?.TryFindResource(key) is System.Windows.Media.Brush b)
+                return b;
+        }
+        catch { }
+        return System.Windows.Media.Brushes.Gray;
+    }
+
+    public void LoadSettings()
+    {
+        _trustedDevices.Clear();
+        foreach (var d in ReadTrustedDevices())
+            _trustedDevices.Add(d);
+
+        _lastSyncText = _kv.Get("last_sync_time") ?? "ещё не было";
+
+        long dbKb = 0;
+        try { dbKb = new FileInfo(_dbPath).Length / 1024; } catch { }
+        string schema = _kv.Get("schema_version") ?? "?";
+        StatsText =
+            $"Заметок: {_allNotes.Count}\n" +
+            $"Файлов: {_allFiles.Count}\n" +
+            $"База: {dbKb} КБ (схема v{schema})\n" +
+            $"Устройство: {Environment.MachineName}\n" +
+            $"Папка данных: {Path.GetDirectoryName(_dbPath)}";
+
+        UpdateSyncStatus();
+        OnProp(nameof(TrustedDevices));
+        OnProp(nameof(StatsText));
+        OnProp(nameof(LastSyncText));
+    }
+
+    private void UpdateSyncStatus()
+    {
+        if (_conflictCount > 0)
+        {
+            ConnectionStatusText = $"Есть конфликты: {_conflictCount}";
+            SyncLedBrush = ThemeBrush("FilesErrBrush");
+        }
+        else if (_unsyncedCount > 0)
+        {
+            ConnectionStatusText = $"Есть изменения: {_unsyncedCount}";
+            SyncLedBrush = ThemeBrush("FilesWarnFgBrush");
+        }
+        else if (_kv.Get("last_sync_time") != null)
+        {
+            ConnectionStatusText = "Синхронизировано";
+            SyncLedBrush = ThemeBrush("FilesOkFgBrush");
+        }
+        else
+        {
+            ConnectionStatusText = "Не подключено";
+            SyncLedBrush = System.Windows.Media.Brushes.Gray;
+        }
+        OnProp(nameof(ConnectionStatusText));
+        OnProp(nameof(SyncLedBrush));
+        OnProp(nameof(LastSyncText));
+    }
+
+    public void RecordSyncSuccess(string ip, int port)
+    {
+        string now = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ");
+        _kv.Set("last_sync_time", now);
+        var list = ReadTrustedDevices();
+        var same = list.FirstOrDefault(d => d.Ip == ip && d.Port == port);
+        if (same != null)
+        {
+            same.LastSeen = now;
+        }
+        else
+        {
+            list.Add(new ViewModels.TrustedDevice
+            {
+                Name = "",
+                Ip = ip,
+                Port = port,
+                LastSeen = now,
+            });
+        }
+        _kv.Set("trusted_devices", System.Text.Json.JsonSerializer.Serialize(list));
+        _lastSyncText = now;
+        LoadSettings();
+    }
+
+    private List<ViewModels.TrustedDevice> ReadTrustedDevices()
+    {
+        try
+        {
+            string? json = _kv.Get("trusted_devices");
+            if (!string.IsNullOrEmpty(json))
+            {
+                var list = System.Text.Json.JsonSerializer
+                    .Deserialize<List<ViewModels.TrustedDevice>>(json);
+                if (list != null) return list;
+            }
+        }
+        catch { }
+        return new List<ViewModels.TrustedDevice>();
+    }
+
+    private void RevokeDevice(ViewModels.TrustedDevice? d)
+    {
+        if (d == null) return;
+        var list = ReadTrustedDevices();
+        list.RemoveAll(x => x.Ip == d.Ip && x.Port == d.Port);
+        _kv.Set("trusted_devices", System.Text.Json.JsonSerializer.Serialize(list));
+        LoadSettings();
+    }
+
+    private void OpenDataFolder()
+    {
+        try
+        {
+            string? dir = Path.GetDirectoryName(_dbPath);
+            if (!string.IsNullOrEmpty(dir))
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(dir)
+                {
+                    UseShellExecute = true
+                });
+            }
+        }
+        catch { }
+    }
 
     // --- Markdown-редактор ---
 

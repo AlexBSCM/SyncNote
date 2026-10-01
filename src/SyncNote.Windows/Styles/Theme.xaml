@@ -425,6 +425,14 @@
         </Setter>
     </Style>
 
+    <!-- Спойлер техинформации: компактный заголовок, без рамок. -->
+    <Style x:Key="FilesExpander" TargetType="Expander">
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="Foreground" Value="{StaticResource FilesTxt2Brush}" />
+        <Setter Property="Margin" Value="0,8,0,0" />
+        <Setter Property="Cursor" Value="Hand" />
+    </Style>
+
     <!-- LED-индикатор статуса (цвет задается в разметке/триггерах). -->
     <Style x:Key="StatusLed" TargetType="Ellipse">
         <Setter Property="Width" Value="10" />

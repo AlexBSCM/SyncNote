@@ -9,6 +9,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <!-- ROW 0: TOOLBAR -->
@@ -29,6 +30,9 @@
                                  Style="{StaticResource TabPill}"/>
                     <RadioButton GroupName="Tabs" Content="Файлы" Margin="4,0,0,0"
                                  IsChecked="{Binding ShowFiles, Mode=TwoWay}"
+                                 Style="{StaticResource TabPill}"/>
+                    <RadioButton GroupName="Tabs" Content="Настройки" Margin="4,0,0,0"
+                                 IsChecked="{Binding ShowSettings, Mode=TwoWay}"
                                  Style="{StaticResource TabPill}"/>
                 </StackPanel>
             </DockPanel>
@@ -305,12 +309,27 @@
                                             <Run Text=" · " />
                                             <Run Text="{Binding Mime, Mode=OneWay}" />
                                         </TextBlock>
-                                        <TextBlock Text="{Binding Sha256}" FontSize="11"
-                                                   Foreground="{StaticResource FilesTxt3Brush}"
-                                                   TextWrapping="Wrap" Margin="0,4,0,0"/>
-                                        <TextBlock Text="{Binding FormattedDate}" FontSize="11"
-                                                   Foreground="{StaticResource FilesTxt2Brush}"
-                                                   Margin="0,4,0,0"/>
+                                        <Expander Header="ℹ️ Техническая информация"
+                                                  IsExpanded="False"
+                                                  Style="{StaticResource FilesExpander}">
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding Sha256}" FontSize="11"
+                                                           FontFamily="Consolas"
+                                                           Foreground="{StaticResource FilesTxt3Brush}"
+                                                           TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                                <TextBlock FontSize="11"
+                                                           Foreground="{StaticResource FilesTxt2Brush}"
+                                                           Margin="0,4,0,0">
+                                                    <Run Text="Ревизия: " />
+                                                    <Run Text="{Binding Rev, Mode=OneWay}" />
+                                                    <Run Text=" · Автор: " />
+                                                    <Run Text="{Binding AuthorDeviceId, Mode=OneWay}" />
+                                                </TextBlock>
+                                                <TextBlock Text="{Binding FormattedDate}" FontSize="11"
+                                                           Foreground="{StaticResource FilesTxt2Brush}"
+                                                           Margin="0,4,0,0"/>
+                                            </StackPanel>
+                                        </Expander>
                                     </StackPanel>
                                 </Border>
                                 <StackPanel Orientation="Horizontal">
@@ -322,6 +341,100 @@
                     </DataTemplate>
                 </ContentControl.ContentTemplate>
             </ContentControl>
+
+            <!-- SETTINGS -->
+            <ScrollViewer Grid.Column="0" Grid.ColumnSpan="2"
+                          Visibility="{Binding SettingsVisible}"
+                          Background="{StaticResource FilesPanel2Brush}"
+                          VerticalScrollBarVisibility="Auto">
+                <StackPanel Margin="16" MaxWidth="640"
+                            HorizontalAlignment="Left">
+                    <Border Style="{StaticResource CardSection}">
+                        <StackPanel>
+                            <TextBlock Text="⚙ Соединение"
+                                       Style="{StaticResource SectionTitle}"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                <Ellipse Width="10" Height="10"
+                                         Fill="{Binding SyncLedBrush}"
+                                         VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding ConnectionStatusText}"
+                                           FontSize="13" Margin="8,0,0,0"
+                                           Foreground="{StaticResource FilesTxtBrush}"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                                <Button Content="Проверить"
+                                        Style="{StaticResource FilesBtnDefault}"
+                                        Command="{Binding RefreshStatusCommand}"/>
+                                <Button Content="📱 Сопряжение..." Margin="8,0,0,0"
+                                        Style="{StaticResource FilesBtnPrimary}"
+                                        Command="{Binding ShowPairingCommand}"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource CardSection}">
+                        <StackPanel>
+                            <TextBlock Text="🔗 Доверенные устройства"
+                                       Style="{StaticResource SectionTitle}"/>
+                            <ListBox ItemsSource="{Binding TrustedDevices}"
+                                     Background="Transparent" BorderThickness="0"
+                                     MaxHeight="160"
+                                     ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <DockPanel LastChildFill="False" Margin="0,4">
+                                            <Button Content="❌ Отозвать" DockPanel.Dock="Right"
+                                                    Style="{StaticResource FilesSmallDanger}"
+                                                    Command="{Binding DataContext.RevokeDeviceCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                    CommandParameter="{Binding}"/>
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding Display}" FontSize="13"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="{StaticResource FilesTxtBrush}"/>
+                                                <TextBlock Text="{Binding LastSeen}" FontSize="11"
+                                                           Foreground="{StaticResource FilesTxt3Brush}"/>
+                                            </StackPanel>
+                                        </DockPanel>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource CardSection}">
+                        <StackPanel>
+                            <TextBlock Text="💾 Хранилище"
+                                       Style="{StaticResource SectionTitle}"/>
+                            <TextBlock Text="{Binding StatsText}" FontSize="13"
+                                       Foreground="{StaticResource FilesTxt2Brush}"
+                                       TextWrapping="Wrap"/>
+                            <Button Content="📂 Открыть папку" Margin="0,12,0,0"
+                                    HorizontalAlignment="Left"
+                                    Style="{StaticResource FilesBtnDefault}"
+                                    Command="{Binding OpenDataFolderCommand}"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
         </Grid>
+
+        <!-- ROW 2: STATUS BAR -->
+        <StatusBar Grid.Row="2" Background="{StaticResource FilesPanel2Brush}">
+            <StatusBarItem>
+                <StackPanel Orientation="Horizontal" Margin="8,2">
+                    <Ellipse Width="10" Height="10"
+                             Fill="{Binding SyncLedBrush}"
+                             VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding LastSyncText}" Margin="8,0,0,0"
+                               FontSize="12"
+                               Foreground="{StaticResource FilesTxt2Brush}"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
+            </StatusBarItem>
+            <StatusBarItem HorizontalAlignment="Right">
+                <TextBlock Text="{Binding AppVersionText}" Margin="0,0,8,0"
+                           FontSize="12"
+                           Foreground="{StaticResource FilesTxt3Brush}"/>
+            </StatusBarItem>
+        </StatusBar>
     </Grid>
 </Window>
