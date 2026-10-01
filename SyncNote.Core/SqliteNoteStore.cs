@@ -30,41 +30,79 @@ public sealed class SqliteNoteStore : ISyncStore, IFileStore, IDisposable
         _filesDir = Path.Combine(
             Path.GetDirectoryName(Path.GetFullPath(filePath)) ?? ".", "files");
         Directory.CreateDirectory(_filesDir);
-        RepairStoredNames();
+        MigrateAttachmentsToSha256();
     }
 
-    // Чиним файлы с чужим расширением (остатки старого импорта):
-    // переименовываем под настоящее имя, метаданные обновляем.
-    private void RepairStoredNames()
+    // Миграция вложений на content-addressed хранение (stored_name == sha256):
+    // файлы со старыми именами {id}_{name} переименовываем под sha из строки,
+    // строку обновляем. Физически отсутствующие пропускаем — их байты
+    // придут повторной синхронизацией. Построчная изоляция ошибок:
+    // одна битая строка не останавливает остальные.
+    private void MigrateAttachmentsToSha256()
     {
+        List<(string Id, string Stored, string Sha)> rows;
         try
         {
             using var cmd = _db.CreateCommand();
-            cmd.CommandText = "SELECT id, file_name, stored_name FROM attachments;";
-            var rows = new List<(string Id, string FileName, string Stored)>();
+            cmd.CommandText = "SELECT id, stored_name, sha256 FROM attachments;";
+            rows = new List<(string, string, string)>();
             using (var reader = cmd.ExecuteReader())
                 while (reader.Read())
                     rows.Add((reader.GetString(0), reader.GetString(1), reader.GetString(2)));
-            foreach (var (id, fileName, stored) in rows)
-            {
-                var proper = $"{Guid.Parse(id):N}_{AttachmentIo.SanitizeFileName(fileName)}";
-                if (proper == stored)
-                    continue;
-                var src = Path.Combine(_filesDir, stored);
-                var dst = Path.Combine(_filesDir, proper);
-                if (File.Exists(src) && !File.Exists(dst))
-                    File.Move(src, dst);
-                if (File.Exists(dst))
-                {
-                    using var up = _db.CreateCommand();
-                    up.CommandText = "UPDATE attachments SET stored_name = $s WHERE id = $id;";
-                    up.Parameters.AddWithValue("$s", proper);
-                    up.Parameters.AddWithValue("$id", id);
-                    up.ExecuteNonQuery();
-                }
-            }
         }
-        catch { }
+        catch
+        {
+            return; // таблицы ещё нет (ранняя миграция) — нечего чинить
+        }
+        foreach (var (id, stored, sha) in rows)
+        {
+            try
+            {
+                var norm = sha.ToLowerInvariant();
+                if (stored == norm || stored == sha)
+                {
+                    if (stored != norm)
+                        UpdateStoredName(id, norm);
+                    continue;
+                }
+                var src = Path.Combine(_filesDir, stored);
+                var dst = Path.Combine(_filesDir, norm);
+                if (!File.Exists(dst) && File.Exists(src))
+                    File.Move(src, dst);
+                // dst уже есть, а src тоже: дубликат тех же байтов (дедуп) —
+                // src удаляем только после сверки хеша содержимого.
+                if (File.Exists(src) && File.Exists(dst)
+                    && !string.Equals(src, dst, StringComparison.OrdinalIgnoreCase)
+                    && Sha256OfFile(src) == norm)
+                {
+                    try { File.Delete(src); } catch { }
+                }
+                if (File.Exists(dst))
+                    UpdateStoredName(id, norm);
+            }
+            catch { }
+        }
+    }
+
+    private void UpdateStoredName(string id, string stored)
+    {
+        using var up = _db.CreateCommand();
+        up.CommandText = "UPDATE attachments SET stored_name = $s WHERE id = $id;";
+        up.Parameters.AddWithValue("$s", stored);
+        up.Parameters.AddWithValue("$id", id);
+        up.ExecuteNonQuery();
+    }
+
+    private static string Sha256OfFile(string path)
+    {
+        using var sha = System.Security.Cryptography.SHA256.Create();
+        using var fs = File.OpenRead(path);
+        var buf = new byte[1024 * 1024];
+        int n;
+        while ((n = fs.Read(buf, 0, buf.Length)) > 0)
+            sha.TransformBlock(buf, 0, n, null, 0);
+        sha.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
+        return Convert.ToHexString(sha.Hash!).ToLowerInvariant();
     }
 
     public string FilesDirectory => _filesDir;
@@ -539,16 +577,18 @@ public sealed class SqliteNoteStore : ISyncStore, IFileStore, IDisposable
     public bool DeleteAttachment(Guid attachmentId)
     {
         string? storedName = null;
+        string? sha = null;
         Guid noteId = Guid.Empty;
         using (var cmd = _db.CreateCommand())
         {
-            cmd.CommandText = "SELECT note_id, stored_name FROM attachments WHERE id = $id;";
+            cmd.CommandText = "SELECT note_id, stored_name, sha256 FROM attachments WHERE id = $id;";
             cmd.Parameters.AddWithValue("$id", attachmentId.ToString("N"));
             using var reader = cmd.ExecuteReader();
             if (!reader.Read())
                 return false;
             noteId = Guid.Parse(reader.GetString(0));
             storedName = reader.GetString(1);
+            sha = reader.GetString(2);
         }
         using var tx = _db.BeginTransaction();
         using var del = _db.CreateCommand();
@@ -557,7 +597,16 @@ public sealed class SqliteNoteStore : ISyncStore, IFileStore, IDisposable
         del.Parameters.AddWithValue("$id", attachmentId.ToString("N"));
         del.ExecuteNonQuery();
         tx.Commit();
-        try { File.Delete(Path.Combine(_filesDir, storedName)); } catch { }
+        // Content-addressed: байты общие, файл удаляем только без живых ссылок.
+        try
+        {
+            using var ref_ = _db.CreateCommand();
+            ref_.CommandText = "SELECT COUNT(*) FROM attachments WHERE sha256 = $h;";
+            ref_.Parameters.AddWithValue("$h", sha);
+            if (Convert.ToInt64(ref_.ExecuteScalar()) == 0)
+                File.Delete(Path.Combine(_filesDir, storedName));
+        }
+        catch { }
         TouchNote(del, noteId);
         return true;
     }
@@ -681,16 +730,8 @@ public sealed class SqliteNoteStore : ISyncStore, IFileStore, IDisposable
             var att = AddAttachment(noteId, tmp);
             att.FileName = fileName;
             att.MimeType = mime;
-            // Хранимый файл должен нести настоящее расширение, иначе ОС
-            // не подберёт программу для открытия.
-            var properName = $"{att.Id:N}_{AttachmentIo.SanitizeFileName(fileName)}";
-            if (properName != att.StoredName)
-            {
-                File.Move(
-                    Path.Combine(_filesDir, att.StoredName),
-                    Path.Combine(_filesDir, properName));
-                att.StoredName = properName;
-            }
+            // stored_name уже равен sha256 содержимого (content-addressed),
+            // обновляем только человекочитаемые метаданные.
             using var cmd = _db.CreateCommand();
             cmd.CommandText = "UPDATE attachments SET file_name = $f, mime = $m, stored_name = $s WHERE id = $id;";
             cmd.Parameters.AddWithValue("$f", fileName);

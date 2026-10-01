@@ -133,7 +133,9 @@ public sealed class InMemoryNoteStore : ISyncStore
         if (existing is null)
             return false;
         _attachments.Remove(existing);
-        try { File.Delete(Path.Combine(FilesDirectory, existing.StoredName)); } catch { }
+        // Content-addressed: байты общие, файл удаляем только без живых ссылок.
+        if (!_attachments.Any(a => a.Sha256 == existing.Sha256))
+            try { File.Delete(Path.Combine(FilesDirectory, existing.StoredName)); } catch { }
         return true;
     }
 

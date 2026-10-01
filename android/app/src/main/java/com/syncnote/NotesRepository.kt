@@ -13,7 +13,52 @@ class NotesRepository(ctx: Context) : SyncStore {
     override fun deviceId(): String = db.deviceId()
 
     init {
+        migrateAttachmentsToSha()
         sweepOrphanFiles()
+    }
+
+    // Миграция вложений на content-addressed хранение (stored_name == sha256):
+    // файлы со старыми именами {id}_{name} переименовываем, строки обновляем.
+    // Построчная изоляция ошибок; физически отсутствующие пропускаем —
+    // их байты придут повторной синхронизацией.
+    private fun migrateAttachmentsToSha() {
+        try {
+            val rows = mutableListOf<Triple<String, String, String>>()
+            db.readableDatabase.rawQuery(
+                "SELECT id, stored_name, sha256 FROM attachments", null).use { c ->
+                while (c.moveToNext())
+                    rows += Triple(c.getString(0), c.getString(1), c.getString(2).lowercase())
+            }
+            for ((id, stored, sha) in rows) {
+                try {
+                    if (stored == sha) continue
+                    val src = File(filesRoot, stored)
+                    val dst = File(filesRoot, sha)
+                    if (!dst.exists() && src.exists()) src.renameTo(dst)
+                    if (src.exists() && dst.exists() && sha256file(src) == sha) {
+                        try { src.delete() } catch (_: Exception) { }
+                    }
+                    if (dst.exists()) {
+                        db.writableDatabase.execSQL(
+                            "UPDATE attachments SET stored_name=? WHERE id=?",
+                            arrayOf(sha, id))
+                    }
+                } catch (_: Exception) { }
+            }
+        } catch (_: Exception) { }
+    }
+
+    private fun sha256file(f: File): String {
+        val md = java.security.MessageDigest.getInstance("SHA-256")
+        f.inputStream().buffered().use { src ->
+            val buf = ByteArray(1024 * 1024)
+            while (true) {
+                val n = src.read(buf)
+                if (n <= 0) break
+                md.update(buf, 0, n)
+            }
+        }
+        return md.digest().joinToString("") { "%02x".format(it) }
     }
 
     // Удаляем файлы без метаданных (обрывы, дубли после слияния id).
@@ -475,13 +520,21 @@ class NotesRepository(ctx: Context) : SyncStore {
         val att = Attachment(noteId = noteId, fileName = fileName, mimeType = mime,
             sizeBytes = content.size.toLong())
         att.sha256 = sha256hex(content)
-        att.storedName = "${att.id}_${fileName.replace(Regex("[/\\\\?%*:|\"<>.]"), "_")}"
+        // Content-addressed: имя на диске == sha256, дедуп — не пишем повторно.
+        att.storedName = att.sha256
         val dest = File(filesRoot, att.storedName)
-        val tmp = File(filesRoot, att.storedName + ".tmp")
-        tmp.writeBytes(content)
-        if (!tmp.renameTo(dest)) {
-            tmp.delete()
-            throw java.io.IOException("Не удалось сохранить вложение $fileName.")
+        if (!dest.exists()) {
+            val tmp = File.createTempFile("att-", ".part", filesRoot)
+            try {
+                tmp.writeBytes(content)
+                if (!tmp.renameTo(dest)) {
+                    tmp.delete()
+                    throw java.io.IOException("Не удалось сохранить вложение $fileName.")
+                }
+            } catch (e: Exception) {
+                try { tmp.delete() } catch (_: Exception) { }
+                throw e
+            }
         }
         val v = android.content.ContentValues().apply {
             put("id", att.id); put("note_id", noteId); put("file_name", fileName)
@@ -495,7 +548,18 @@ class NotesRepository(ctx: Context) : SyncStore {
 
     private fun deleteAttachmentFile(att: Attachment) {
         db.writableDatabase.delete("attachments", "id=?", arrayOf(att.id))
-        try { File(filesRoot, att.storedName).delete() } catch (_: Exception) { }
+        // Content-addressed: байты общие, файл удаляем только без живых ссылок.
+        try {
+            db.readableDatabase.rawQuery(
+                "SELECT COUNT(*) FROM attachments WHERE sha256=?",
+                arrayOf(att.sha256)).use { c ->
+                c.moveToFirst()
+                if (c.getLong(0) > 0) return
+            }
+        } catch (_: Exception) {
+            return // состояние неизвестно — файл не трогаем
+        }
+        try { File(filesRoot, att.sha256).delete() } catch (_: Exception) { }
     }
 
     private fun touchNote(noteId: String) {

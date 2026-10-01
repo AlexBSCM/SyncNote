@@ -234,7 +234,7 @@ public sealed class SqliteNoteStoreTests
             raw.Open();
             using var cmd = raw.CreateCommand();
             // Минимальная v6: keyvalue + версия. Остальные таблицы v6 не нужны,
-            // миграция v6->v7 их не трогает; store откроется после RepairStoredNames,
+            // миграция v6->v7 их не трогает; store откроется после sha-миграции,
             // которому нужна attachments — создаём пустую.
             cmd.CommandText = """
                 CREATE TABLE keyvalue(key TEXT PRIMARY KEY, value TEXT NOT NULL);
@@ -275,6 +275,105 @@ public sealed class SqliteNoteStoreTests
             CollectionAssert.AreEquivalent(
                 new[] { "id", "name", "mime", "size", "sha256", "stored_name", "rev", "updated_at", "author_device", "is_deleted" },
                 cols);
+        }
+    }
+
+    [TestMethod]
+    public void Attachments_ContentAddressed_DedupAndOrphanGuard()
+    {
+        using var store = new SqliteNoteStore(TempDb());
+        var n1 = store.Add("Первая", "тело");
+        var n2 = store.Add("Вторая", "тело");
+
+        var src = Path.Combine(Path.GetTempPath(), $"syncnote-dedup-{Guid.NewGuid():N}.bin");
+        var payload = new byte[128];
+        new Random(7).NextBytes(payload);
+        File.WriteAllBytes(src, payload);
+        try
+        {
+            var a1 = store.AddAttachment(n1.Id, src);
+            var a2 = store.AddAttachment(n2.Id, src);
+            // Имя на диске — sha256, один физический файл на два вложения.
+            Assert.AreEqual(a1.Sha256, a1.StoredName);
+            Assert.AreEqual(a2.Sha256, a2.StoredName);
+            Assert.AreEqual(a1.StoredName, a2.StoredName);
+            var phys = Path.Combine(store.FilesDirectory, a1.StoredName);
+            Assert.IsTrue(File.Exists(phys));
+
+            // Удаление одного совладельца байты не трогает.
+            Assert.IsTrue(store.DeleteAttachment(a1.Id));
+            Assert.IsTrue(File.Exists(phys));
+            // Последний владелец — файл уходит.
+            Assert.IsTrue(store.DeleteAttachment(a2.Id));
+            Assert.IsFalse(File.Exists(phys));
+        }
+        finally { File.Delete(src); }
+    }
+
+    [TestMethod]
+    public void Attachments_Migration_RenamesLegacyStoredName()
+    {
+        var path = TempDb();
+        var noteId = Guid.NewGuid().ToString("N");
+        var attId = Guid.NewGuid().ToString("N");
+        // Уникальный контент на прогон: общий %TEMP%/files переживает прогоны,
+        // фиксированный sha привёл бы к ложному дедупу с остатками.
+        var content = Guid.NewGuid().ToByteArray();
+        string sha;
+        using (var h = System.Security.Cryptography.SHA256.Create())
+            sha = Convert.ToHexString(h.ComputeHash(content)).ToLowerInvariant();
+        var legacyName = attId + "_oldname.bin";
+        using (var raw = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={path}"))
+        {
+            raw.Open();
+            using var cmd = raw.CreateCommand();
+            cmd.CommandText = """
+                CREATE TABLE keyvalue(key TEXT PRIMARY KEY, value TEXT NOT NULL);
+                INSERT INTO keyvalue(key, value) VALUES('schema_version', '8');
+                CREATE TABLE notes(
+                    id TEXT PRIMARY KEY, rev INTEGER NOT NULL,
+                    title TEXT NOT NULL, body TEXT NOT NULL,
+                    updated_at TEXT NOT NULL, author_device TEXT NOT NULL,
+                    is_deleted INTEGER NOT NULL DEFAULT 0,
+                    title_norm TEXT NOT NULL DEFAULT '', body_norm TEXT NOT NULL DEFAULT '');
+                CREATE TABLE attachments(
+                    id TEXT PRIMARY KEY, note_id TEXT NOT NULL REFERENCES notes(id),
+                    file_name TEXT NOT NULL, mime TEXT NOT NULL,
+                    size INTEGER NOT NULL, sha256 TEXT NOT NULL, stored_name TEXT NOT NULL);
+                CREATE TABLE syncstate(note_id TEXT PRIMARY KEY, sync_rev INTEGER NOT NULL DEFAULT 0);
+                CREATE TABLE seen_conflicts(
+                    note_id TEXT NOT NULL, rev INTEGER NOT NULL,
+                    content_hash TEXT NOT NULL,
+                    PRIMARY KEY (note_id, rev, content_hash));
+                """;
+            cmd.ExecuteNonQuery();
+            cmd.CommandText = "INSERT INTO notes(id, rev, title, body, updated_at, author_device, is_deleted, title_norm, body_norm) " +
+                "VALUES($id, 1, 'З', 'т', '2026-01-01T00:00:00Z', 'dev', 0, '', '');";
+            cmd.Parameters.AddWithValue("$id", noteId);
+            cmd.ExecuteNonQuery();
+            cmd.Parameters.Clear();
+            cmd.CommandText = "INSERT INTO attachments(id, note_id, file_name, mime, size, sha256, stored_name) " +
+                "VALUES($a, $n, 'oldname.bin', 'application/octet-stream', $sz, $h, $s);";
+            cmd.Parameters.AddWithValue("$a", attId);
+            cmd.Parameters.AddWithValue("$n", noteId);
+            cmd.Parameters.AddWithValue("$sz", content.Length);
+            cmd.Parameters.AddWithValue("$h", sha);
+            cmd.Parameters.AddWithValue("$s", legacyName);
+            cmd.ExecuteNonQuery();
+        }
+        var filesDir = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(path))!, "files");
+        Directory.CreateDirectory(filesDir);
+        File.WriteAllBytes(Path.Combine(filesDir, legacyName), content);
+
+        using (var store = new SqliteNoteStore(path))
+        {
+            var list = store.GetAttachments(Guid.Parse(noteId));
+            Assert.AreEqual(1, list.Count);
+            Assert.AreEqual(sha, list[0].StoredName);
+            Assert.IsTrue(File.Exists(Path.Combine(store.FilesDirectory, sha)));
+            Assert.IsFalse(File.Exists(Path.Combine(store.FilesDirectory, legacyName)));
+            CollectionAssert.AreEqual(content,
+                File.ReadAllBytes(Path.Combine(store.FilesDirectory, sha)));
         }
     }
 

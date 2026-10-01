@@ -40,7 +40,9 @@ public static class AttachmentIo
         };
 
     // Копирует файл в каталог хранилища атомарно (temp + move), считает sha256.
-    // Возвращает (storedName, size, sha256). Ошибки — наружу, без замалчивания.
+    // Content-addressed: физическое имя ВСЕГДА равно hex sha256 содержимого,
+    // повторный импорт того же контента байты не копирует (дедуп).
+    // Возвращает (storedName == sha256hex, size, sha256). Ошибки — наружу.
     public static (string StoredName, long Size, string Sha256) CopyIn(
         string filesDir, Guid attachmentId, string sourcePath)
     {
@@ -51,20 +53,31 @@ public static class AttachmentIo
         if (size > MaxAttachmentBytes)
             throw new AttachmentTooLargeException(fileName, size, MaxAttachmentBytes);
         Directory.CreateDirectory(filesDir);
-        var storedName = $"{attachmentId:N}_{SanitizeFileName(fileName)}";
-        var tmp = Path.Combine(filesDir, storedName + ".tmp");
-        var dest = Path.Combine(filesDir, storedName);
         string hex;
         using (var sha = SHA256.Create())
         using (var src = File.OpenRead(sourcePath))
-        using (var dst = File.Create(tmp))
-        using (var crypto = new CryptoStream(dst, sha, CryptoStreamMode.Write))
         {
-            src.CopyTo(crypto);
-            crypto.FlushFinalBlock();
+            var buf = new byte[1024 * 1024];
+            int n;
+            while ((n = src.Read(buf, 0, buf.Length)) > 0)
+                sha.TransformBlock(buf, 0, n, null, 0);
+            sha.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
             hex = Convert.ToHexString(sha.Hash!).ToLowerInvariant();
         }
-        File.Move(tmp, dest, overwrite: true);
-        return (storedName, size, hex);
+        var dest = Path.Combine(filesDir, hex);
+        if (File.Exists(dest))
+            return (hex, size, hex);
+        var tmp = Path.Combine(filesDir, hex + "." + Guid.NewGuid().ToString("N") + ".tmp");
+        try
+        {
+            File.Copy(sourcePath, tmp);
+            File.Move(tmp, dest);
+        }
+        catch
+        {
+            try { File.Delete(tmp); } catch { }
+            throw;
+        }
+        return (hex, size, hex);
     }
 }

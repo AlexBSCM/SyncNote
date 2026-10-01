@@ -674,9 +674,20 @@ public partial class MainWindow : Window
             var att = _store.GetAttachments(note.Id).FirstOrDefault(a => a.Id == attId);
             if (att is null)
                 return;
-            var path = System.IO.Path.Combine(_store.FilesDirectory, att.StoredName);
+            var stored = System.IO.Path.Combine(_store.FilesDirectory, att.StoredName);
+            // Хранилище content-addressed (имя == sha, без расширения) —
+            // для открытия ОС копируем во временный файл с настоящим именем.
+            var openDir = System.IO.Path.Combine(
+                System.IO.Path.GetTempPath(), "syncnote-open");
+            System.IO.Directory.CreateDirectory(openDir);
+            var path = System.IO.Path.Combine(
+                openDir, att.Sha256 + "_" + AttachmentIo.SanitizeFileName(att.FileName));
             try
             {
+                var srcInfo = new System.IO.FileInfo(stored);
+                var dstInfo = new System.IO.FileInfo(path);
+                if (!dstInfo.Exists || dstInfo.Length != srcInfo.Length)
+                    System.IO.File.Copy(stored, path, overwrite: true);
                 System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
                 {
                     FileName = path,
