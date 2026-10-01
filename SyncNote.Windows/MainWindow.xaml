@@ -61,7 +61,7 @@
                                             Style="{StaticResource FilesBtnDanger}"
                                             Click="DeleteButton_Click" />
                                 </StackPanel>
-                                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                <StackPanel Orientation="Vertical" Margin="0,8,0,0">
                                     <CheckBox x:Name="SelectAllNotesBox" Content="Выбрать все"
                                               Style="{StaticResource MaterialCheckBox}"
                                               VerticalAlignment="Center"
@@ -69,7 +69,8 @@
                                               Unchecked="SelectAllNotesBox_Changed" />
                                     <Button x:Name="DeleteCheckedButton" Content="Удалить выбранные"
                                             Style="{StaticResource FilesBtnDefault}"
-                                            Margin="8,0,0,0" Click="DeleteChecked_Click" />
+                                            HorizontalAlignment="Stretch" Margin="0,8,0,0"
+                                            Click="DeleteChecked_Click" />
                                 </StackPanel>
                             </StackPanel>
                         </Border>
