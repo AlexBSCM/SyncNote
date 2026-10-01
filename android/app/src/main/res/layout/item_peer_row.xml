@@ -54,4 +54,15 @@
         android:layout_height="10dp"
         android:layout_marginStart="8dp"
         android:background="@drawable/bg_led" />
+
+    <!-- Показывается только на Smart Start Screen во время подключения.
+         Для списка Wi-Fi Direct пиров остаётся скрытым. -->
+    <ProgressBar
+        android:id="@+id/peerProgress"
+        style="?android:attr/progressBarStyleSmall"
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:layout_marginStart="8dp"
+        android:indeterminateTint="@color/sync_accent"
+        android:visibility="gone" />
 </LinearLayout>

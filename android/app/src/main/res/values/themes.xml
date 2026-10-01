@@ -14,6 +14,22 @@
         <item name="android:colorBackground">@color/bg_window</item>
     </style>
 
+    <!-- Smart Start Screen (бэклог 1.c): без системного ActionBar —
+         шапку «SyncNote / Подключение» рисует сам layout.
+         colorSurface/colorOnSurface нужны Snackbar, который под темой
+         AppCompat не имеет собственных значений по умолчанию. -->
+    <style name="Theme.SyncNote.NoActionBar" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="colorPrimary">@color/sync_accent</item>
+        <item name="colorPrimaryDark">@color/sync_accent_dark</item>
+        <item name="colorSecondary">@color/sync_accent</item>
+        <item name="colorAccent">@color/sync_accent</item>
+        <item name="colorOnPrimary">@color/text_on_accent</item>
+        <item name="colorSurface">@color/bg_card</item>
+        <item name="colorOnSurface">@color/text_primary</item>
+        <item name="android:windowBackground">@color/bg_window</item>
+        <item name="android:colorBackground">@color/bg_window</item>
+    </style>
+
     <!-- Изолированная MDC-тема для экранов файлов (этап F.7).
          Основная тема приложения не меняется. -->
     <style name="Theme.SyncNote.Files" parent="Theme.MaterialComponents.Light.Bridge">

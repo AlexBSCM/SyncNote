@@ -49,13 +49,22 @@
             android:name=".EditorActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />
+        <!-- Бэклог 1.c: точка входа — Smart Start Screen.
+             MAIN/LAUNCHER перенесён сюда с MainActivity.
+             Тема NoActionBar: шапку рисует сам layout fragment_sync_home,
+             поэтому экрана выбора не возникает лишнего ActionBar. -->
         <activity
-            android:name=".MainActivity"
-            android:exported="true">
+            android:name=".AppStartActivity"
+            android:exported="true"
+            android:theme="@style/Theme.SyncNote.NoActionBar">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <!-- MainActivity теперь только внутренняя цель перехода. -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="false" />
     </application>
 </manifest>
