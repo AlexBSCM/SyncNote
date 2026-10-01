@@ -8,6 +8,9 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.syncnote.databinding.ItemConflictPairBinding
+import java.text.DateFormat
+import java.util.Date
 
 // Разрешение конфликтов: пары по суффиксу копии (зеркало Conflicts C#).
 // Все действия явные, скрытых потерь нет.
@@ -90,21 +93,27 @@ class ConflictsActivity : AppCompatActivity() {
         RecyclerView.Adapter<PairsAdapter.Holder>() {
         private var items: List<Pair<Note, Note>> = emptyList()
 
-        class Holder(parent: ViewGroup) : RecyclerView.ViewHolder(
-            LayoutInflater.from(parent.context)
-                .inflate(android.R.layout.simple_list_item_1, parent, false)) {
-            val text: TextView = itemView.findViewById(android.R.id.text1)
-        }
+        // Бэклог 1.b: был android.R.layout.simple_list_item_1 — системный layout.
+        class Holder(val b: ItemConflictPairBinding) : RecyclerView.ViewHolder(b.root)
 
         fun submit(p: List<Pair<Note, Note>>) {
             items = p
             notifyDataSetChanged()
         }
 
-        override fun onCreateViewHolder(p: ViewGroup, v: Int) = Holder(p)
+        override fun onCreateViewHolder(p: ViewGroup, v: Int) = Holder(
+            ItemConflictPairBinding.inflate(
+                LayoutInflater.from(p.context), p, false))
+
         override fun getItemCount() = items.size
+
         override fun onBindViewHolder(h: Holder, pos: Int) {
-            h.text.text = items[pos].first.title
+            val (orig, copy) = items[pos]
+            h.b.pairTitle.text = orig.title
+            h.b.localPreview.text = orig.body.ifBlank { "—" }
+            h.b.remotePreview.text = copy.body.ifBlank { "—" }
+            h.b.pairDate.text = DateFormat.getDateTimeInstance(DateFormat.SHORT,
+                DateFormat.SHORT).format(Date(copy.updatedAt))
             h.itemView.setOnClickListener { onClick(pos) }
         }
     }

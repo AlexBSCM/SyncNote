@@ -30,4 +30,13 @@
     <string name="files_open_failed">Не удалось открыть файл.</string>
     <string name="files_saved">Сохранено: %1$s</string>
     <string name="files_save_failed">Не удалось сохранить.</string>
+
+    <!-- Список доступных устройств (бэклог 1.b): вместо сырого
+         «имя (3)» показываем человекочитаемый статус. -->
+    <string name="peer_status_connected">подключено</string>
+    <string name="peer_status_invited">приглашение отправлено</string>
+    <string name="peer_status_found">доступно</string>
+    <string name="peer_status_failed">ошибка связи</string>
+    <string name="peer_status_unavailable">недоступно</string>
+    <string name="peer_address_unknown">адрес неизвестен</string>
 </resources>

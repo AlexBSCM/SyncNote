@@ -1,8 +1,13 @@
 package com.syncnote
 
+import android.content.Context
 import android.content.Intent
+import android.content.res.ColorStateList
 import android.net.wifi.p2p.WifiP2pDevice
 import android.os.Bundle
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.EditText
@@ -10,6 +15,8 @@ import android.widget.ListView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
+import com.syncnote.databinding.ItemPeerRowBinding
 
 // Экран синхронизации: ручной ввод узла/токена (петля, GO-адрес)
 // + поиск ПК по Wi-Fi Direct (нужно железо). Состояния как в protocol/.
@@ -23,6 +30,9 @@ class SyncActivity : AppCompatActivity(), P2pConnector.Listener {
     private lateinit var repo: NotesRepository
     private lateinit var p2p: P2pConnector
     private var peers: List<WifiP2pDevice> = emptyList()
+
+    // Бэклог 1.b: свой адаптер вместо ArrayAdapter + android.R.layout.simple_list_item_1.
+    private val peerAdapter by lazy { PeerAdapter(this) }
 
     private val qrLauncher = registerForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()) { res ->
@@ -204,9 +214,9 @@ class SyncActivity : AppCompatActivity(), P2pConnector.Listener {
             findViewById<TextView>(R.id.peersInfo).text =
                 if (devices.isEmpty()) "Устройств рядом не найдено."
                 else "Нажмите на устройство для подключения:"
-            findViewById<ListView>(R.id.peersList).adapter = ArrayAdapter(
-                this, android.R.layout.simple_list_item_1,
-                devices.map { "${it.deviceName} (${it.status})" })
+            // Бэклог 1.b: был ArrayAdapter с android.R.layout.simple_list_item_1.
+            findViewById<ListView>(R.id.peersList).adapter = peerAdapter
+            peerAdapter.submit(devices)
         }
     }
 
@@ -219,3 +229,58 @@ class SyncActivity : AppCompatActivity(), P2pConnector.Listener {
 
     override fun onError(reason: String) = setState("Ошибка: $reason")
 }
+
+// Адаптер списка пиров (бэклог 1.b). Показывает карточку item_peer_row:
+// имя устройства, IP-адрес, человекочитаемый статус и LED-индикатор связи.
+// Бизнес-логику P2pConnector не меняет — только отображение.
+private class PeerAdapter(private val ctx: Context) :
+    ArrayAdapter<WifiP2pDevice>(ctx, 0, mutableListOf()) {
+
+    fun submit(items: List<WifiP2pDevice>) {
+        clear()
+        addAll(items)
+        notifyDataSetChanged()
+    }
+
+    override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
+        val b = if (convertView == null)
+            ItemPeerRowBinding.inflate(LayoutInflater.from(ctx), parent, false)
+        else convertView.tag as ItemPeerRowBinding
+        if (convertView == null) b.root.tag = b
+
+        val d = getItem(position) ?: return b.root
+        val connected = d.status == P2P_CONNECTED
+
+        b.peerName.text = d.deviceName?.takeIf { it.isNotBlank() }
+            ?: ctx.getString(R.string.peer_status_unavailable)
+        val addr = d.deviceAddress?.takeIf { it.isNotBlank() }
+            ?: ctx.getString(R.string.peer_address_unknown)
+        b.peerStatus.text = ctx.getString(statusRes(d.status)) + " · " + addr
+        b.peerStatus.setTextColor(ContextCompat.getColor(
+            ctx,
+            if (connected) R.color.text_secondary else R.color.text_hint))
+
+        // LED: зелёный при подключении, серый иначе.
+        b.peerLed.backgroundTintList = ColorStateList.valueOf(
+            ContextCompat.getColor(
+                ctx,
+                if (connected) R.color.status_ok_fg else R.color.text_hint))
+        return b.root
+    }
+
+    private fun statusRes(status: Int): Int = when (status) {
+        P2P_CONNECTED -> R.string.peer_status_connected
+        P2P_INVITED -> R.string.peer_status_invited
+        P2P_FAILED -> R.string.peer_status_failed
+        P2P_UNAVAILABLE -> R.string.peer_status_unavailable
+        else -> R.string.peer_status_found
+    }
+}
+
+// Константы WifiP2pDevice.WIFI_P2P_DEVICE_* помечены @hide и отсутствуют
+// в публичном android.jar, поэтому значения зафиксированы здесь явно.
+private const val P2P_DISCONNECTED = 0
+private const val P2P_CONNECTED = 1
+private const val P2P_INVITED = 2
+private const val P2P_FAILED = 3
+private const val P2P_UNAVAILABLE = 4

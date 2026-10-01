@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Строка списка доступных Wi-Fi Direct устройств (пиров).
+     Замена android.R.layout.simple_list_item_1 (бэклог 1.b).
+     Индикатор связи красится кодом через backgroundTintList:
+     зелёный — Connected, серый — остальные состояния. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="horizontal"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center_vertical"
+    android:background="@drawable/bg_item_card"
+    android:padding="12dp"
+    android:layout_marginBottom="4dp">
+
+    <TextView
+        android:id="@+id/peerIcon"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:gravity="center"
+        android:text="📱"
+        android:textSize="18sp"
+        android:background="@drawable/bg_badge_default" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_weight="1"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/peerName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textAppearance="@style/TextAppearance.SyncNote.Title"
+            android:textColor="@color/text_primary"
+            android:maxLines="1"
+            android:ellipsize="middle" />
+
+        <TextView
+            android:id="@+id/peerStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:textAppearance="@style/TextAppearance.SyncNote.Caption"
+            android:textColor="@color/text_hint"
+            android:maxLines="1"
+            android:ellipsize="end" />
+    </LinearLayout>
+
+    <View
+        android:id="@+id/peerLed"
+        android:layout_width="10dp"
+        android:layout_height="10dp"
+        android:layout_marginStart="8dp"
+        android:background="@drawable/bg_led" />
+</LinearLayout>
