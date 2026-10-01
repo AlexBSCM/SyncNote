@@ -42,7 +42,7 @@
                             BorderBrush="{StaticResource FilesLineBrush}"
                             BorderThickness="0,0,1,0">
                     <DockPanel>
-                        <Border DockPanel.Dock="Top" Padding="12"
+                        <Border DockPanel.Dock="Top" Padding="12,8"
                                 BorderBrush="{StaticResource FilesLineSoftBrush}"
                                 BorderThickness="0,0,0,1">
                             <TextBox x:Name="SearchBox" Style="{StaticResource FilesSearchBox}"
@@ -50,12 +50,13 @@
                         </Border>
                         <Border DockPanel.Dock="Bottom" Background="{StaticResource FilesPanel2Brush}"
                                 BorderBrush="{StaticResource FilesLineSoftBrush}"
-                                BorderThickness="0,1,0,0" Padding="12">
+                                BorderThickness="0,1,0,0" Padding="12,8">
                             <StackPanel>
                                 <StackPanel Orientation="Horizontal">
                                     <Button x:Name="AddButton" Content="Добавить"
                                             Style="{StaticResource FilesBtnPrimary}"
                                             Padding="16,8" MinHeight="32"
+                                            VerticalAlignment="Center"
                                             Click="AddButton_Click" />
                                     <Button x:Name="DeleteButton" Content="Удалить" Margin="8,0,0,0"
                                             Style="{StaticResource FilesBtnDanger}"
@@ -346,7 +347,7 @@
                             BorderBrush="{StaticResource FilesLineBrush}"
                             BorderThickness="0,0,1,0">
                     <DockPanel>
-                        <Border DockPanel.Dock="Top" Padding="12"
+                        <Border DockPanel.Dock="Top" Padding="12,8"
                                 BorderBrush="{StaticResource FilesLineSoftBrush}"
                                 BorderThickness="0,0,0,1">
                             <StackPanel Orientation="Horizontal">
