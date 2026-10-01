@@ -12,10 +12,18 @@
     <DockPanel>
         <StatusBar DockPanel.Dock="Bottom">
             <StatusBarItem>
-                <TextBlock x:Name="ConnectionStatus" Text="Не подключено" />
+                <StackPanel Orientation="Horizontal">
+                    <Ellipse x:Name="StatusLedBar" Style="{StaticResource StatusLed}"
+                             VerticalAlignment="Center" />
+                    <TextBlock x:Name="ConnectionStatus" Text="Не подключено"
+                               VerticalAlignment="Center" />
+                </StackPanel>
             </StatusBarItem>
             <StatusBarItem HorizontalAlignment="Right">
                 <StackPanel Orientation="Horizontal">
+                    <TextBlock x:Name="AppVersionText" VerticalAlignment="Center"
+                               Foreground="{StaticResource FilesTxt3Brush}" FontSize="11"
+                               Margin="0,0,8,0" />
                     <Button x:Name="ConflictsButton" Content="Конфликты (0)" Padding="8,0"
                             Visibility="Collapsed" Click="ConflictsButton_Click" />
                 </StackPanel>

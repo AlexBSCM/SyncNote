@@ -35,6 +35,9 @@ public partial class MainWindow : Window
         // Локальный клиент — тот же пользователь: доверяем себе для петли.
         _pairing.TrustDevice(_store.DeviceId, Environment.MachineName);
         ConnectionStatus.Text = $"Принимаю подключения: {SyncPort}";
+        AppVersionText.Text =
+            "v" + (System.Reflection.Assembly.GetExecutingAssembly()
+                .GetName().Version?.ToString(3) ?? "?");
         SyncDeviceBox.Text = Environment.MachineName;
         PairServerInfo.Text = $"Принимаю подключения: 127.0.0.1:{SyncPort}";
         P2pInfo.Text = _p2pGroup.Status;
@@ -295,6 +298,7 @@ public partial class MainWindow : Window
                 : text.StartsWith("Ошибка")
                     ? SyncErrBrush
                     : text.Contains('…') ? SyncBusyBrush : SyncIdleBrush;
+            StatusLedBar.Fill = SyncLed.Fill;
         });
     }
 

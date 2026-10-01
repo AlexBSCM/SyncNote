@@ -1,5 +1,8 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:local="clr-namespace:SyncNote.Windows">
+
+    <local:InverseBoolToVisibilityConverter x:Key="InverseBoolToVis" />
 
     <!-- Палитра вкладки «Файлы»: перевод CSS-переменных files-preview.html.
          Presentation layer only: ViewModel и команды не затрагиваются. -->
@@ -393,6 +396,49 @@
         <Setter Property="Height" Value="10" />
         <Setter Property="Fill" Value="{StaticResource FilesTxt3Brush}" />
         <Setter Property="Margin" Value="0,0,8,0" />
+    </Style>
+
+    <!-- Таб-пилюля на RadioButton: выбранная — акцент + белый текст. -->
+    <Style x:Key="TabPill" TargetType="RadioButton">
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{StaticResource FilesTxt2Brush}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Padding" Value="16,8" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RadioButton">
+                    <Border Background="{TemplateBinding Background}"
+                            CornerRadius="6"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center"
+                                          VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter Property="Background" Value="{StaticResource FilesAccentBrush}" />
+                            <Setter Property="Foreground" Value="White" />
+                        </Trigger>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsMouseOver" Value="True" />
+                                <Condition Property="IsChecked" Value="False" />
+                            </MultiTrigger.Conditions>
+                            <Setter Property="Background" Value="{StaticResource FilesPanel2Brush}" />
+                        </MultiTrigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Спойлер техинформации: компактный заголовок, без рамок. -->
+    <Style x:Key="FilesExpander" TargetType="Expander">
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="Foreground" Value="{StaticResource FilesTxt2Brush}" />
+        <Setter Property="Margin" Value="0,8,0,0" />
+        <Setter Property="Cursor" Value="Hand" />
     </Style>
 
 </ResourceDictionary>
