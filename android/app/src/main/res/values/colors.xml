@@ -1,7 +1,48 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Палитра подсистемы «Отдельные файлы» (этап F.7).
-         Зеркало десктопной FilesTheme.xaml. Hex только здесь. -->
+    <!-- ==================================================================
+         Синхронизированная с Desktop дизайн-система (этап 4.1).
+         Источник истины: SyncNote.Windows/Styles/FilesTheme.xaml
+         (палитра вкладки «Файлы» + унификация «Заметок»/«Настроек»).
+         Правило: hex только в этом файле, дальше — ссылки @color/*.
+         ================================================================== -->
+
+    <!-- ===== Primary Brand Colors ===== -->
+    <color name="sync_accent">#3F51B5</color>       <!-- Indigo 500, = FilesAccent -->
+    <color name="sync_accent_dark">#354499</color>  <!-- Hover/Pressed, = FilesAccentHover -->
+    <color name="sync_accent_soft">#1A3F51B5</color> <!-- Выделение строки, = FilesAccentSoft -->
+    <color name="text_on_accent">#FFFFFF</color>    <!-- Текст на заливке акцентом -->
+
+    <!-- ===== Backgrounds ===== -->
+    <color name="bg_window">#FFFFFF</color>         <!-- Фон окна, = FilesPanel -->
+    <color name="bg_surface">#F7F7F8</color>        <!-- Карточки/поиск, = FilesPanel2 -->
+    <color name="bg_card">#FFFFFF</color>           <!-- Фон элемента списка, = FilesPanel -->
+    <color name="bg_hover">#F7F7F8</color>          <!-- Наведение на строку, = FilesPanel2 -->
+
+    <!-- ===== Borders ===== -->
+    <color name="border_line">#E2E2E6</color>       <!-- = FilesLine -->
+    <color name="border_line_soft">#EDEDF0</color>  <!-- = FilesLineSoft -->
+
+    <!-- ===== Text ===== -->
+    <color name="text_primary">#1B1B1F</color>      <!-- Заголовки, = FilesTxt -->
+    <color name="text_secondary">#6A6A72</color>    <!-- Текст, = FilesTxt2 -->
+    <color name="text_hint">#9A9AA2</color>         <!-- Мета/даты, = FilesTxt3 -->
+
+    <!-- ===== Status Badges ===== -->
+    <color name="status_ok_bg">#E8F5E9</color>      <!-- Светло-зелёный фон -->
+    <color name="status_ok_fg">#2E7D32</color>      <!-- Тёмно-зелёный текст -->
+    <color name="status_warn_bg">#FFF3E0</color>    <!-- Светло-оранжевый фон -->
+    <color name="status_warn_fg">#EF6C00</color>    <!-- Тёмно-оранжевый текст -->
+    <color name="status_err_bg">#FFEBEE</color>     <!-- Светло-красный фон -->
+    <color name="status_err_fg">#C62828</color>     <!-- Тёмно-красный текст -->
+
+    <!-- ==================================================================
+         Ниже — палитра подсистемы «Отдельные файлы» (этап F.7).
+         Сохранена как есть: используется в разметке экранов файлов
+         (fragment_files_list, item_file_row, bottom_sheet_file_details,
+         preview_dashed_border) и в темах Theme.SyncNote.Files.
+         Удаление сломает существующие layout — не трогаем на этом шаге.
+         ================================================================== -->
     <color name="files_accent">#3F51B5</color>
     <color name="files_accent_dark">#354499</color>
     <color name="files_bg">#FFFFFF</color>

@@ -1,23 +1,34 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Основная тема приложения. Этап 4.1: цвета переведены на общую
+         дизайн-систему (те же акцент/фон, что и на Desktop).
+         Parent не меняется — ActionBar и поведение остаются прежними,
+         затронуты только значения ресурсов. -->
     <style name="Theme.SyncNote" parent="Theme.AppCompat.Light.DarkActionBar">
-        <item name="colorPrimary">#3F51B5</item>
-        <item name="colorPrimaryDark">#303F9F</item>
-        <item name="colorAccent">#FF4081</item>
+        <item name="colorPrimary">@color/sync_accent</item>
+        <item name="colorPrimaryDark">@color/sync_accent_dark</item>
+        <item name="colorSecondary">@color/sync_accent</item>
+        <item name="colorAccent">@color/sync_accent</item>
+        <item name="colorOnPrimary">@color/text_on_accent</item>
+        <item name="android:windowBackground">@color/bg_window</item>
+        <item name="android:colorBackground">@color/bg_window</item>
     </style>
 
-    <!-- Изолированная MDC-тема только для новых экранов файлов (этап F.7).
+    <!-- Изолированная MDC-тема для экранов файлов (этап F.7).
          Основная тема приложения не меняется. -->
     <style name="Theme.SyncNote.Files" parent="Theme.MaterialComponents.Light.Bridge">
-        <item name="colorPrimary">@color/files_accent</item>
-        <item name="colorPrimaryDark">@color/files_accent_dark</item>
-        <item name="colorSecondary">@color/files_accent</item>
-        <item name="colorAccent">@color/files_accent</item>
+        <item name="colorPrimary">@color/sync_accent</item>
+        <item name="colorPrimaryDark">@color/sync_accent_dark</item>
+        <item name="colorSecondary">@color/sync_accent</item>
+        <item name="colorAccent">@color/sync_accent</item>
+        <item name="colorOnPrimary">@color/text_on_accent</item>
+        <item name="android:windowBackground">@color/bg_window</item>
     </style>
 
     <style name="Theme.SyncNote.FilesBottomSheet"
         parent="Theme.MaterialComponents.Light.BottomSheetDialog">
-        <item name="colorPrimary">@color/files_accent</item>
-        <item name="colorSecondary">@color/files_accent</item>
+        <item name="colorPrimary">@color/sync_accent</item>
+        <item name="colorSecondary">@color/sync_accent</item>
+        <item name="colorOnPrimary">@color/text_on_accent</item>
     </style>
 </resources>

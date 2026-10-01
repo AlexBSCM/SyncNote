@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ==================================================================
+     Компонентные стили дизайн-системы SyncNote (этап 4.1).
+     Зеркало SyncNote.Windows/Styles/FilesTheme.xaml: плоские карточки
+     без теней, radius 6-8dp, чёткая типографика.
+     Только ресурсы — код Activity/ViewModel/Repository не затрагивается.
+     ================================================================== -->
+<resources>
+
+    <!-- ===== Типографика ===== -->
+    <!-- Заголовок карточки/секции: 16sp bold (аналог SectionTitle/FilesTxt). -->
+    <style name="TextAppearance.SyncNote.Title"
+        parent="TextAppearance.MaterialComponents.Headline6">
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textSize">16sp</item>
+    </style>
+
+    <!-- Основной текст: 14sp, вторичный цвет (аналог FilesTxt2). -->
+    <style name="TextAppearance.SyncNote.Body"
+        parent="TextAppearance.MaterialComponents.Body2">
+        <item name="android:textColor">@color/text_secondary</item>
+        <item name="android:textSize">14sp</item>
+    </style>
+
+    <!-- Мета-информация: даты, размеры, подписи (аналог FilesTxt3). -->
+    <style name="TextAppearance.SyncNote.Caption"
+        parent="TextAppearance.MaterialComponents.Caption">
+        <item name="android:textColor">@color/text_hint</item>
+        <item name="android:textSize">12sp</item>
+    </style>
+
+    <!-- ===== Карточки ===== -->
+    <!-- Плоская карточка: белый фон, radius 8dp, рамка вместо тени. -->
+    <style name="Widget.SyncNote.Card" parent="Widget.MaterialComponents.CardView">
+        <item name="cardBackgroundColor">@color/bg_card</item>
+        <item name="cardCornerRadius">8dp</item>
+        <item name="cardElevation">0dp</item>
+        <item name="strokeColor">@color/border_line</item>
+        <item name="strokeWidth">1dp</item>
+    </style>
+
+    <!-- Секция настроек: тот же flat-вид, padding 16dp. -->
+    <style name="Widget.SyncNote.CardSection" parent="Widget.SyncNote.Card">
+        <item name="cardCornerRadius">10dp</item>
+        <item name="contentPadding">16dp</item>
+    </style>
+
+    <!-- ===== Кнопки ===== -->
+    <!-- Primary: заливка акцентом, белый текст, radius 6dp. -->
+    <style name="Widget.SyncNote.Button.Primary"
+        parent="Widget.MaterialComponents.Button">
+        <item name="backgroundTint">@color/sync_accent</item>
+        <item name="android:textColor">@color/text_on_accent</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="cornerRadius">6dp</item>
+        <item name="rippleColor">@color/sync_accent_dark</item>
+        <item name="elevation">0dp</item>
+        <item name="android:stateListAnimator">@null</item>
+    </style>
+
+    <!-- Обычная кнопка: белая заливка, серая рамка, radius 6dp. -->
+    <style name="Widget.SyncNote.Button.Default"
+        parent="Widget.MaterialComponents.Button.OutlinedButton">
+        <item name="backgroundTint">@color/bg_card</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textSize">13sp</item>
+        <item name="strokeColor">@color/border_line</item>
+        <item name="strokeWidth">1dp</item>
+        <item name="cornerRadius">6dp</item>
+        <item name="rippleColor">@color/sync_accent_soft</item>
+        <item name="elevation">0dp</item>
+        <item name="android:stateListAnimator">@null</item>
+    </style>
+
+    <!-- Danger-кнопка: прозрачная, красный текст. -->
+    <style name="Widget.SyncNote.Button.Danger"
+        parent="Widget.MaterialComponents.Button.TextButton">
+        <item name="backgroundTint">@android:color/transparent</item>
+        <item name="android:textColor">@color/status_err_fg</item>
+        <item name="android:textSize">13sp</item>
+        <item name="cornerRadius">6dp</item>
+        <item name="rippleColor">@color/status_err_bg</item>
+        <item name="elevation">0dp</item>
+        <item name="android:stateListAnimator">@null</item>
+    </style>
+
+    <!-- Компактная Danger-кнопка (аналог FilesSmallDanger). -->
+    <style name="Widget.SyncNote.Button.DangerSmall"
+        parent="Widget.SyncNote.Button.Danger">
+        <item name="android:textSize">12sp</item>
+        <item name="android:minWidth">0dp</item>
+        <item name="android:minHeight">0dp</item>
+        <item name="android:insetTop">0dp</item>
+        <item name="android:insetBottom">0dp</item>
+    </style>
+
+    <!-- ===== Поля ввода ===== -->
+    <!-- Плоское поле: подложка bg_surface, radius 8dp, акцентная рамка в фокусе. -->
+    <style name="Widget.SyncNote.TextInputLayout"
+        parent="Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+        <item name="boxBackgroundColor">@color/bg_surface</item>
+        <item name="boxStrokeColor">@color/sync_accent</item>
+        <item name="boxCornerRadiusTopStart">8dp</item>
+        <item name="boxCornerRadiusTopEnd">8dp</item>
+        <item name="boxCornerRadiusBottomStart">8dp</item>
+        <item name="boxCornerRadiusBottomEnd">8dp</item>
+        <item name="hintTextColor">@color/text_hint</item>
+    </style>
+
+    <!-- Поле поиска: белая подложка, radius 6dp (аналог FilesSearchBox). -->
+    <style name="Widget.SyncNote.SearchBox"
+        parent="Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+        <item name="boxBackgroundColor">@color/bg_card</item>
+        <item name="boxStrokeColor">@color/border_line</item>
+        <item name="boxStrokeWidth">1dp</item>
+        <item name="boxCornerRadiusTopStart">6dp</item>
+        <item name="boxCornerRadiusTopEnd">6dp</item>
+        <item name="boxCornerRadiusBottomStart">6dp</item>
+        <item name="boxCornerRadiusBottomEnd">6dp</item>
+        <item name="hintTextColor">@color/text_hint</item>
+    </style>
+
+    <!-- ===== Бейджи статусов ===== -->
+    <style name="Widget.SyncNote.Badge.Ok" parent="">
+        <item name="android:background">@drawable/bg_badge_ok</item>
+        <item name="android:textColor">@color/status_ok_fg</item>
+        <item name="android:textSize">11sp</item>
+        <item name="android:paddingStart">8dp</item>
+        <item name="android:paddingEnd">8dp</item>
+        <item name="android:paddingTop">2dp</item>
+        <item name="android:paddingBottom">2dp</item>
+    </style>
+
+    <style name="Widget.SyncNote.Badge.Warn" parent="">
+        <item name="android:background">@drawable/bg_badge_warn</item>
+        <item name="android:textColor">@color/status_warn_fg</item>
+        <item name="android:textSize">11sp</item>
+        <item name="android:paddingStart">8dp</item>
+        <item name="android:paddingEnd">8dp</item>
+        <item name="android:paddingTop">2dp</item>
+        <item name="android:paddingBottom">2dp</item>
+    </style>
+
+    <style name="Widget.SyncNote.Badge.Error" parent="">
+        <item name="android:background">@drawable/bg_badge_error</item>
+        <item name="android:textColor">@color/status_err_fg</item>
+        <item name="android:textSize">11sp</item>
+        <item name="android:paddingStart">8dp</item>
+        <item name="android:paddingEnd">8dp</item>
+        <item name="android:paddingTop">2dp</item>
+        <item name="android:paddingBottom">2dp</item>
+    </style>
+
+    <!-- ===== Списки ===== -->
+    <!-- Плоский список без разделителей и теней (аналог FilesList). -->
+    <style name="Widget.SyncNote.ListView" parent="">
+        <item name="android:background">@color/bg_window</item>
+        <item name="android:divider">@null</item>
+        <item name="android:dividerHeight">0dp</item>
+        <item name="android:scrollbarStyle">@null</item>
+        <item name="android:clipToPadding">false</item>
+    </style>
+
+    <!-- Строка списка: карточка с отступом 2dp (аналог FilesListItem). -->
+    <style name="Widget.SyncNote.ListItem" parent="">
+        <item name="android:background">@drawable/bg_item_card</item>
+        <item name="android:layout_marginBottom">2dp</item>
+        <item name="android:padding">10dp</item>
+    </style>
+
+</resources>
