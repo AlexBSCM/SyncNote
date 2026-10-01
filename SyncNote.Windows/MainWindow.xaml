@@ -521,60 +521,7 @@
                 <ScrollViewer VerticalScrollBarVisibility="Auto"
                               Background="{StaticResource FilesPanel2Brush}">
                     <StackPanel Margin="16">
-                        <Border Style="{StaticResource CardSection}">
-                            <StackPanel>
-                                <TextBlock Style="{StaticResource SectionTitle}"
-                                           Text="🔄 Синхронизация" />
-                                <Grid Margin="0,4,0,0">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="90" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition />
-                                        <RowDefinition />
-                                        <RowDefinition />
-                                        <RowDefinition />
-                                    </Grid.RowDefinitions>
-                                    <TextBlock Text="Узел" FontSize="13"
-                                               Foreground="{StaticResource FilesTxt2Brush}"
-                                               VerticalAlignment="Center" />
-                                    <TextBox x:Name="SyncHostBox" Text="127.0.0.1" Grid.Column="1"
-                                             Margin="0,2" Style="{StaticResource FilesInputField}" />
-                                    <TextBlock Text="Порт" Grid.Row="1" FontSize="13"
-                                               Foreground="{StaticResource FilesTxt2Brush}"
-                                               VerticalAlignment="Center" />
-                                    <TextBox x:Name="SyncPortBox" Text="48211" Grid.Row="1" Grid.Column="1"
-                                             Margin="0,2" Style="{StaticResource FilesInputField}" />
-                                    <TextBlock Text="Токен" Grid.Row="2" FontSize="13"
-                                               Foreground="{StaticResource FilesTxt2Brush}"
-                                               VerticalAlignment="Center" />
-                                    <TextBox x:Name="SyncTokenBox" Grid.Row="2" Grid.Column="1"
-                                             Margin="0,2" Style="{StaticResource FilesInputField}" />
-                                    <TextBlock Text="Имя" Grid.Row="3" FontSize="13"
-                                               Foreground="{StaticResource FilesTxt2Brush}"
-                                               VerticalAlignment="Center" />
-                                    <TextBox x:Name="SyncDeviceBox" Grid.Row="3" Grid.Column="1"
-                                             Margin="0,2" Style="{StaticResource FilesInputField}" />
-                                </Grid>
-                                <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
-                                    <Button x:Name="SyncGoButton" Content="Синхронизировать"
-                                            Style="{StaticResource FilesBtnPrimary}"
-                                            Click="SyncGoButton_Click" />
-                                    <Button x:Name="SyncCancelButton" Content="Отмена" Margin="8,0,0,0"
-                                            Style="{StaticResource FilesBtnDefault}"
-                                            IsEnabled="False" Click="SyncCancelButton_Click" />
-                                </StackPanel>
-                                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                                    <Ellipse x:Name="SyncLed" Style="{StaticResource StatusLed}"
-                                             VerticalAlignment="Center" />
-                                    <TextBlock x:Name="SyncStateText" Text="Не подключено"
-                                               FontSize="13"
-                                               Foreground="{StaticResource FilesTxt2Brush}"
-                                               TextWrapping="Wrap" VerticalAlignment="Center" />
-                                </StackPanel>
-                            </StackPanel>
-                        </Border>
+                        
                         <Border Style="{StaticResource CardSection}">
                             <StackPanel>
                                 <TextBlock Style="{StaticResource SectionTitle}"
@@ -632,12 +579,14 @@
                                     <Button Content="Новый код" Style="{StaticResource FilesBtnDefault}"
                                             Click="PairNewToken_Click" />
                                 </StackPanel>
-                                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                <StackPanel Orientation="Vertical" Margin="0,8,0,0">
                                     <Button x:Name="P2pButton" Content="Создать Wi-Fi Direct группу"
+                                            HorizontalAlignment="Stretch"
                                             Style="{StaticResource FilesBtnDefault}"
                                             Click="P2pButton_Click" />
                                     <Button x:Name="BtButton" Content="Принимать по Bluetooth"
-                                            Margin="8,0,0,0"
+                                            Margin="0,8,0,0"
+                                            HorizontalAlignment="Stretch"
                                             Style="{StaticResource FilesBtnDefault}"
                                             Click="BtButton_Click" />
                                 </StackPanel>
@@ -651,9 +600,63 @@
                                            Foreground="{StaticResource FilesTxt2Brush}"
                                            TextWrapping="Wrap" />
                                 <TextBlock Text="Wi-Fi Direct и Bluetooth на реальном железе ещё не проверены (T6/T7)."
-                                           FontSize="11"
+                                           FontSize="12"
                                            Foreground="{StaticResource FilesTxt3Brush}"
                                            TextWrapping="Wrap" Margin="0,4,0,0" />
+                            </StackPanel>
+                        </Border>
+<Border Style="{StaticResource CardSection}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SectionTitle}"
+                                           Text="🔄 Синхронизация" />
+                                <Grid Margin="0,4,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="90" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition />
+                                        <RowDefinition />
+                                        <RowDefinition />
+                                        <RowDefinition />
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Text="Узел" FontSize="13"
+                                               Foreground="{StaticResource FilesTxt2Brush}"
+                                               VerticalAlignment="Center" />
+                                    <TextBox x:Name="SyncHostBox" Text="127.0.0.1" Grid.Column="1"
+                                             Margin="0,4" Style="{StaticResource FilesInputField}" />
+                                    <TextBlock Text="Порт" Grid.Row="1" FontSize="13"
+                                               Foreground="{StaticResource FilesTxt2Brush}"
+                                               VerticalAlignment="Center" />
+                                    <TextBox x:Name="SyncPortBox" Text="48211" Grid.Row="1" Grid.Column="1"
+                                             Margin="0,4" Style="{StaticResource FilesInputField}" />
+                                    <TextBlock Text="Токен" Grid.Row="2" FontSize="13"
+                                               Foreground="{StaticResource FilesTxt2Brush}"
+                                               VerticalAlignment="Center" />
+                                    <TextBox x:Name="SyncTokenBox" Grid.Row="2" Grid.Column="1"
+                                             Margin="0,4" Style="{StaticResource FilesInputField}" />
+                                    <TextBlock Text="Имя" Grid.Row="3" FontSize="13"
+                                               Foreground="{StaticResource FilesTxt2Brush}"
+                                               VerticalAlignment="Center" />
+                                    <TextBox x:Name="SyncDeviceBox" Grid.Row="3" Grid.Column="1"
+                                             Margin="0,4" Style="{StaticResource FilesInputField}" />
+                                </Grid>
+                                <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                                    <Button x:Name="SyncGoButton" Content="Синхронизировать"
+                                            Style="{StaticResource FilesBtnPrimary}"
+                                            Click="SyncGoButton_Click" />
+                                    <Button x:Name="SyncCancelButton" Content="Отмена" Margin="8,0,0,0"
+                                            Style="{StaticResource FilesBtnDefault}"
+                                            IsEnabled="False" Click="SyncCancelButton_Click" />
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                    <Ellipse x:Name="SyncLed" Style="{StaticResource StatusLed}"
+                                             VerticalAlignment="Center" />
+                                    <TextBlock x:Name="SyncStateText" Text="Не подключено"
+                                               FontSize="13"
+                                               Foreground="{StaticResource FilesTxt2Brush}"
+                                               TextWrapping="Wrap" VerticalAlignment="Center" />
+                                </StackPanel>
                             </StackPanel>
                         </Border>
                         <Border Style="{StaticResource CardSection}">
