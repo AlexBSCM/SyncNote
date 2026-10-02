@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Строка пункта чек-листа в редакторе (бэклог 1.d).
+     Заменяет программную сборку LinearLayout+CheckBox+Button.
+     Текст остаётся нередактируемым — как и раньше, это label у CheckBox,
+     поэтому тап по строке переключает пункт. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="horizontal"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center_vertical"
+    android:paddingStart="4dp"
+    android:paddingEnd="0dp"
+    android:paddingTop="2dp"
+    android:paddingBottom="2dp"
+    android:layout_marginBottom="4dp">
+
+    <CheckBox
+        android:id="@+id/checkItemBox"
+        android:layout_width="0dp"
+        android:layout_weight="1"
+        android:layout_height="wrap_content"
+        android:minHeight="48dp"
+        android:minWidth="0dp"
+        android:gravity="center_vertical"
+        android:buttonTint="@color/sync_accent"
+        android:textColor="@color/checklist_item_text"
+        android:textSize="14sp"
+        android:paddingStart="4dp"
+        android:paddingEnd="0dp" />
+
+    <Button
+        android:id="@+id/deleteCheckBtn"
+        style="@style/Widget.SyncNote.Button.DangerSmall"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_marginStart="4dp"
+        android:paddingStart="0dp"
+        android:paddingEnd="0dp"
+        android:minWidth="0dp"
+        android:minHeight="40dp"
+        android:text="×"
+        android:textSize="18sp"
+        android:textAllCaps="false"
+        android:contentDescription="Удалить пункт" />
+</LinearLayout>

@@ -4,13 +4,13 @@ import android.net.Uri
 import android.os.Bundle
 import android.provider.OpenableColumns
 import android.widget.Button
-import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.LinearLayout
-import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import com.syncnote.databinding.ItemAttachmentRowBinding
+import com.syncnote.databinding.ItemChecklistRowBinding
 import java.io.File
 
 class EditorActivity : AppCompatActivity() {
@@ -81,66 +81,53 @@ class EditorActivity : AppCompatActivity() {
         }
     }
 
+    // Бэклог 1.d: строка пункта приходит из item_checklist_row.xml
+    // (ViewBinding) вместо программной сборки LinearLayout+CheckBox+Button.
+    // Логика та же: чекбокс переключает пункт, «×» удаляет его.
     private fun loadChecklist() {
         val id = noteId ?: return
         val box = findViewById<LinearLayout>(R.id.checklistBox)
         box.removeAllViews()
+        val inflater = layoutInflater
         for (item in repo.checklist(id)) {
-            val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-            val check = CheckBox(this).apply {
+            val b = ItemChecklistRowBinding.inflate(inflater, box, false)
+            b.checkItemBox.apply {
                 text = item.text
                 isChecked = item.isChecked
-                layoutParams = LinearLayout.LayoutParams(0,
-                    LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
                 setOnCheckedChangeListener { _, checked ->
                     item.isChecked = checked
                     repo.updateChecklistItem(item)
                 }
             }
-            val del = Button(this).apply {
-                text = "×"
-                setOnClickListener {
-                    repo.deleteChecklistItem(item.id, id)
-                    loadChecklist()
-                }
+            b.deleteCheckBtn.setOnClickListener {
+                repo.deleteChecklistItem(item.id, id)
+                loadChecklist()
             }
-            row.addView(check)
-            row.addView(del)
-            box.addView(row)
+            box.addView(b.root)
         }
     }
 
+    // Бэклог 1.d: строка вложения из item_attachment_row.xml.
+    // Иконка и размер файла берутся из FileUiModel — те же, что на
+    // вкладке «Файлы», чтобы вид совпадал.
     private fun loadAttachments() {
         val id = noteId ?: return
         val box = findViewById<LinearLayout>(R.id.attachmentsBox)
         box.removeAllViews()
+        val inflater = layoutInflater
         for (att in repo.attachments(id)) {
-            val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-            val label = TextView(this).apply {
-                text = "${att.fileName} (${att.sizeBytes} байт)"
-                layoutParams = LinearLayout.LayoutParams(0,
-                    LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            val b = ItemAttachmentRowBinding.inflate(inflater, box, false)
+            val emoji = FileUiModel.iconFor(att.mimeType).first
+            b.attachIcon.text = emoji
+            b.fileName.text = att.fileName
+            b.fileMeta.text = "${FileUiModel.formatSize(att.sizeBytes)} • ${att.mimeType}"
+            b.btnOpen.setOnClickListener { openAttachment(att) }
+            b.btnSave.setOnClickListener { downloadAttachment(att) }
+            b.btnDelete.setOnClickListener {
+                repo.deleteAttachment(att.id)
+                loadAttachments()
             }
-            val open = Button(this).apply {
-                text = "Открыть"
-                setOnClickListener { openAttachment(att) }
-            }
-            val save = Button(this).apply {
-                text = "Скачать"
-                setOnClickListener { downloadAttachment(att) }
-            }
-            val del = Button(this).apply {
-                text = "×"
-                setOnClickListener {
-                    repo.deleteAttachment(att.id)
-                    loadAttachments()
-                }
-            }
-            row.addView(label)
-            row.addView(open)
-            row.addView(save)
-            row.addView(del)
-            box.addView(row)
+            box.addView(b.root)
         }
     }
 
